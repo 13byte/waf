@@ -8,6 +8,7 @@ import LoginPage from '@pages/LoginPage';
 import RegisterPage from '@pages/RegisterPage';
 import PostsPage from '@pages/PostsPage';
 import VulnerablePage from '@pages/VulnerablePage';
+import LogMonitoringPage from '@pages/LogMonitoringPage';
 import ForbiddenPage from '@pages/errors/ForbiddenPage';
 import NotFoundPage from '@pages/errors/NotFoundPage';
 import ServerErrorPage from '@pages/errors/ServerErrorPage';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
               <Route path="/posts" element={<PostsPage />} />
               <Route path="/posts/:id" element={<PostDetailPage />} />
               <Route path="/vulnerable" element={<VulnerablePage />} />
+              <Route path="/logs" element={<LogMonitoringPage />} />
               <Route path="/error/403" element={<ForbiddenPage />} />
               <Route path="/error/404" element={<NotFoundPage />} />
               <Route path="/error/500" element={<ServerErrorPage />} />

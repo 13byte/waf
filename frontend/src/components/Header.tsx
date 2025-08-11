@@ -38,6 +38,9 @@ const Header: React.FC = () => {
             <Link to="/vulnerable" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
               WAF Tests
             </Link>
+            <Link to="/logs" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+              Logs
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -103,6 +106,9 @@ const Header: React.FC = () => {
             </Link>
             <Link to="/vulnerable" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
               WAF Tests
+            </Link>
+            <Link to="/logs" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
+              Logs
             </Link>
           </div>
         </div>

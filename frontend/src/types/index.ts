@@ -87,3 +87,44 @@ export interface PaginatedResponse<T> {
 	per_page: number;
 	pages: number;
 }
+
+export interface WafLogEntry {
+	id: string;
+	timestamp: string;
+	source_ip: string;
+	source_port: number;
+	dest_ip: string;
+	dest_port: number;
+	method: string;
+	uri: string;
+	status_code: number;
+	blocked: boolean;
+	attack_types: string[];
+	rule_files: string[];
+	rule_ids: string[];
+	attack_details: AttackDetail[];
+	messages: any[];
+}
+
+export interface AttackDetail {
+	message: string;
+	data: string;
+	rule_id: string;
+	file: string;
+}
+
+export interface WafLogsResponse {
+	logs: WafLogEntry[];
+	total: number;
+	page: number;
+	pages: number;
+	has_next: boolean;
+}
+
+export interface WafStats {
+	total_requests: number;
+	blocked_requests: number;
+	attack_types: Record<string, number>;
+	top_source_ips: Record<string, number>;
+	recent_attacks: WafLogEntry[];
+}

@@ -1,4 +1,4 @@
-import type { LoginRequest, RegisterRequest, AuthToken, User, Post, Category, PostFormData, CommentCreateRequest, Comment, PaginatedResponse } from '../types';
+import type { LoginRequest, RegisterRequest, AuthToken, User, Post, Category, PostFormData, CommentCreateRequest, Comment, PaginatedResponse, WafLogsResponse, WafStats } from '../types';
 
 interface ApiResponse<T> {
   data?: T;
@@ -178,6 +178,36 @@ class ApiClient {
 
   async testFileDownload(filePath: string): Promise<ApiResponse<any>> {
     return this.request(`/vulnerable/file-download?file_path=${encodeURIComponent(filePath)}`);
+  }
+
+  // WAF Logs API
+  async getWafLogs(params?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    attack_type?: string;
+    blocked_only?: boolean;
+    ip_filter?: string;
+    rule_id_filter?: string;
+  }): Promise<ApiResponse<any>> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit !== undefined) searchParams.append('limit', params.limit.toString());
+    if (params?.offset !== undefined) searchParams.append('offset', params.offset.toString());
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.attack_type) searchParams.append('attack_type', params.attack_type);
+    if (params?.blocked_only !== undefined) searchParams.append('blocked_only', params.blocked_only.toString());
+    if (params?.ip_filter) searchParams.append('ip_filter', params.ip_filter);
+    if (params?.rule_id_filter) searchParams.append('rule_id_filter', params.rule_id_filter);
+    const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return this.request(`/logs/waf-logs${queryString}`);
+  }
+
+  async getLogDetail(logId: string): Promise<ApiResponse<any>> {
+    return this.request(`/logs/waf-logs/${logId}`);
+  }
+
+  async getWafStats(): Promise<ApiResponse<any>> {
+    return this.request('/logs/waf-stats');
   }
 }
 

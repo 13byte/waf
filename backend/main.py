@@ -3,11 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.routers import auth, posts
+from app.routers import auth, posts, logs
 import os
 import subprocess
 import uuid
 import mimetypes
+import json
+from datetime import datetime
+from typing import List, Dict, Any
 
 app = FastAPI(
     title="WAF Test API",
@@ -66,6 +69,7 @@ app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads"
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(posts.router, prefix="/api")
+app.include_router(logs.router, prefix="/api")
 
 @app.get("/")
 def read_root():
@@ -444,6 +448,328 @@ def vulnerable_file_download(file_path: str):
             "attempted_path": file_path,
             "crs_rule_triggered": "930xxx - Path Traversal (Access Error)"
         }
+
+def parse_audit_log():
+    """Parse ModSecurity audit.log and return structured data with enhanced accuracy"""
+    log_file_path = "/app/logs/modsecurity/audit.log"
+    logs = []
+    
+    try:
+        with open(log_file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                try:
+                    log_entry = json.loads(line)
+                    if 'transaction' not in log_entry:
+                        continue
+                        
+                    transaction = log_entry.get("transaction", {})
+                    request_data = transaction.get("request", {})
+                    response_data = transaction.get("response", {})
+                    
+                    # Extract HTTP status code and messages
+                    status_code = response_data.get("http_code", 0)
+                    messages = log_entry.get("messages", [])
+                    
+                    # Determine if request was blocked: HTTP 403 AND messages present
+                    is_blocked = status_code == 403 and len(messages) > 0
+                    
+                    # Initialize parsed log structure
+                    parsed_log = {
+                        "id": transaction.get("unique_id", ""),
+                        "timestamp": transaction.get("time_stamp", ""),
+                        "source_ip": transaction.get("client_ip", ""),
+                        "source_port": transaction.get("client_port", 0),
+                        "dest_ip": transaction.get("host_ip", ""),
+                        "dest_port": transaction.get("host_port", 0),
+                        "method": request_data.get("method", ""),
+                        "uri": request_data.get("uri", ""),
+                        "user_agent": request_data.get("headers", {}).get("User-Agent", "Unknown"),
+                        "status_code": status_code,
+                        "blocked": is_blocked,
+                        "attack_types": [],
+                        "rule_files": [],
+                        "rule_ids": [],
+                        "attack_details": [],
+                        "severity_score": 0,
+                        "messages": messages
+                    }
+                    
+                    # Process messages for rule information
+                    for message in log_entry.get("messages", []):
+                        if "details" not in message:
+                            continue
+                            
+                        details = message["details"]
+                        
+                        # Extract rule ID
+                        rule_id = details.get("ruleId", "")
+                        if rule_id and rule_id not in parsed_log["rule_ids"]:
+                            parsed_log["rule_ids"].append(rule_id)
+                        
+                        # Extract and process file path
+                        rule_file = details.get("file", "")
+                        if rule_file:
+                            file_name = rule_file.split("/")[-1]
+                            if file_name and file_name not in parsed_log["rule_files"]:
+                                parsed_log["rule_files"].append(file_name)
+                        
+                        # Extract attack types from tags - simplified CRS tag mapping
+                        tags = details.get("tags", [])
+                        for tag in tags:
+                            if "attack-xss" in tag:
+                                if "XSS" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("XSS")
+                            elif "attack-sqli" in tag:
+                                if "SQLI" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("SQLI")
+                            elif "attack-lfi" in tag:
+                                if "LFI" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("LFI")
+                            elif "attack-rfi" in tag:
+                                if "RFI" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("RFI")
+                            elif "attack-rce" in tag:
+                                if "RCE" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("RCE")
+                            elif "protocol" in tag.lower():
+                                if "PROTOCOL" not in parsed_log["attack_types"]:
+                                    parsed_log["attack_types"].append("PROTOCOL")
+                        
+                        # Fallback: extract from message content
+                        message_text = message.get("message", "").upper()
+                        if "XSS" in message_text and "XSS" not in parsed_log["attack_types"]:
+                            parsed_log["attack_types"].append("XSS")
+                        elif "SQL" in message_text and "SQLI" not in parsed_log["attack_types"]:
+                            parsed_log["attack_types"].append("SQLI")
+                        elif "TRAVERSAL" in message_text and "LFI" not in parsed_log["attack_types"]:
+                            parsed_log["attack_types"].append("LFI")
+                        
+                        # Calculate severity score
+                        severity = details.get("severity", "0")
+                        try:
+                            parsed_log["severity_score"] += int(severity)
+                        except (ValueError, TypeError):
+                            pass
+                        
+                        # Store detailed attack information
+                        attack_data = details.get("data", "")
+                        if attack_data or rule_id:
+                            parsed_log["attack_details"].append({
+                                "message": message.get("message", ""),
+                                "data": attack_data,
+                                "rule_id": rule_id,
+                                "file": file_name,
+                                "severity": severity,
+                                "match": details.get("match", "")
+                            })
+                    
+                    logs.append(parsed_log)
+                        
+                except json.JSONDecodeError:
+                    continue
+                except Exception as e:
+                    print(f"Error parsing log entry: {e}")
+                    continue
+                    
+    except FileNotFoundError:
+        return {"error": "Audit log file not found", "logs": []}
+    except Exception as e:
+        return {"error": str(e), "logs": []}
+    
+    # Sort by timestamp (newest first)
+    logs.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"logs": logs, "total": len(logs)}
+
+@app.get("/api/logs/waf-logs")
+def get_waf_logs_legacy(skip: int = 0, limit: int = 100, search: str = "", attack_type: str = "", blocked_only: bool = False, ip_filter: str = "", rule_id_filter: str = ""):
+    """Enhanced legacy endpoint with improved data transformation"""
+    result = parse_audit_log()
+    
+    if "error" in result:
+        return result
+    
+    logs = result["logs"]
+    filtered_logs = []
+    
+    for log in logs:
+        # Apply enhanced filters
+        if search:
+            search_lower = search.lower()
+            search_match = (
+                search_lower in log["source_ip"].lower() or 
+                search_lower in log["uri"].lower() or
+                search_lower in log.get("user_agent", "").lower() or
+                any(search_lower in detail["data"].lower() for detail in log["attack_details"])
+            )
+            if not search_match:
+                continue
+        
+        if attack_type and attack_type.upper() not in log["attack_types"]:
+            continue
+            
+        if blocked_only and not log["blocked"]:
+            continue
+
+        if ip_filter and ip_filter not in log["source_ip"]:
+            continue
+
+        if rule_id_filter and rule_id_filter not in log["rule_ids"]:
+            continue
+            
+        # Transform to expected format with normalized field names
+        transformed_log = {
+            "id": log["id"],
+            "timestamp": log["timestamp"],
+            "client_ip": log["source_ip"],
+            "method": log["method"],
+            "uri": log["uri"],
+            "primary_attack": log["attack_types"][0] if log["attack_types"] else "Normal Request",
+            "primary_rule_id": log["rule_ids"][0] if log["rule_ids"] else "N/A",
+            "primary_file": log["rule_files"][0] if log["rule_files"] else "N/A",
+            "attack_types": log["attack_types"],
+            "rule_ids": log["rule_ids"],
+            "rule_files": log["rule_files"],
+            "severity": log.get("severity_score", 0),
+            "is_blocked": log["blocked"],
+            "response_code": log["status_code"],
+            "user_agent": log.get("user_agent", "Unknown"),
+            "total_messages": len(log["messages"]),
+            "attack_details": log.get("attack_details", []),
+            "raw_data": log["messages"]
+        }
+        filtered_logs.append(transformed_log)
+    
+    # Apply pagination
+    total_filtered = len(filtered_logs)
+    paginated_logs = filtered_logs[skip:skip + limit]
+    
+    return {
+        "logs": paginated_logs,
+        "total": total_filtered,
+        "has_more": skip + limit < total_filtered
+    }
+
+@app.get("/api/logs/waf-stats")
+def get_waf_stats_legacy():
+    """Legacy stats endpoint for existing frontend compatibility"""
+    result = parse_audit_log()
+    
+    if "error" in result:
+        return result
+    
+    logs = result["logs"]
+    
+    total_requests = len(logs)
+    blocked_requests = sum(1 for log in logs if log["blocked"])
+    
+    stats = {
+        "total_requests": total_requests,
+        "blocked_requests": blocked_requests,
+        "block_rate": round((blocked_requests / total_requests * 100) if total_requests > 0 else 0, 1),
+        "top_attacks": [],
+        "top_ips": [],
+        "top_rules": []
+    }
+    
+    # Count attack types
+    attack_counts = {}
+    ip_counts = {}
+    rule_counts = {}
+    
+    for log in logs:
+        # Count attack types
+        for attack_type in log["attack_types"]:
+            attack_counts[attack_type] = attack_counts.get(attack_type, 0) + 1
+        
+        # Count source IPs
+        ip_counts[log["source_ip"]] = ip_counts.get(log["source_ip"], 0) + 1
+        
+        # Count rule IDs
+        for rule_id in log["rule_ids"]:
+            rule_counts[rule_id] = rule_counts.get(rule_id, 0) + 1
+    
+    # Format top lists
+    stats["top_attacks"] = [{"type": k, "count": v} for k, v in sorted(attack_counts.items(), key=lambda x: x[1], reverse=True)[:10]]
+    stats["top_ips"] = [{"ip": k, "count": v} for k, v in sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:10]]
+    stats["top_rules"] = [{"rule_id": k, "count": v} for k, v in sorted(rule_counts.items(), key=lambda x: x[1], reverse=True)[:10]]
+    
+    return stats
+
+@app.get("/api/monitoring/logs")
+def get_waf_logs(skip: int = 0, limit: int = 100, search: str = "", attack_type: str = "", blocked_only: bool = False):
+    """Get parsed WAF logs with filtering and pagination"""
+    result = parse_audit_log()
+    
+    if "error" in result:
+        return result
+    
+    logs = result["logs"]
+    filtered_logs = []
+    
+    for log in logs:
+        # Apply filters
+        if search:
+            search_lower = search.lower()
+            if not (search_lower in log["source_ip"].lower() or 
+                   search_lower in log["uri"].lower() or
+                   any(search_lower in detail["data"].lower() for detail in log["attack_details"])):
+                continue
+        
+        if attack_type and attack_type.upper() not in log["attack_types"]:
+            continue
+            
+        if blocked_only and not log["blocked"]:
+            continue
+            
+        filtered_logs.append(log)
+    
+    # Apply pagination
+    total_filtered = len(filtered_logs)
+    paginated_logs = filtered_logs[skip:skip + limit]
+    
+    return {
+        "logs": paginated_logs,
+        "total": total_filtered,
+        "page": skip // limit + 1,
+        "pages": (total_filtered + limit - 1) // limit,
+        "has_next": skip + limit < total_filtered
+    }
+
+@app.get("/api/monitoring/stats")
+def get_waf_stats():
+    """Get WAF statistics"""
+    result = parse_audit_log()
+    
+    if "error" in result:
+        return result
+    
+    logs = result["logs"]
+    
+    stats = {
+        "total_requests": len(logs),
+        "blocked_requests": sum(1 for log in logs if log["blocked"]),
+        "attack_types": {},
+        "top_source_ips": {},
+        "recent_attacks": logs[:5] if logs else []
+    }
+    
+    for log in logs:
+        # Count attack types
+        for attack_type in log["attack_types"]:
+            stats["attack_types"][attack_type] = stats["attack_types"].get(attack_type, 0) + 1
+        
+        # Count source IPs
+        source_ip = log["source_ip"]
+        stats["top_source_ips"][source_ip] = stats["top_source_ips"].get(source_ip, 0) + 1
+    
+    # Sort top IPs
+    stats["top_source_ips"] = dict(sorted(stats["top_source_ips"].items(), key=lambda x: x[1], reverse=True)[:10])
+    
+    return stats
 
 if __name__ == "__main__":
     import uvicorn
