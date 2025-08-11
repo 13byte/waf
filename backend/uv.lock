@@ -787,6 +787,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
+    { name = "bcrypt" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "passlib", extra = ["bcrypt"] },
@@ -812,6 +813,7 @@ dev = [
 requires-dist = [
     { name = "aiofiles" },
     { name = "alembic", marker = "extra == 'dev'" },
+    { name = "bcrypt", specifier = ">=4.0.0" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx", marker = "extra == 'dev'" },

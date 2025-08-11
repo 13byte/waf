@@ -17,7 +17,7 @@ services:
       MODSEC_AUDIT_ENGINE: on
       MODSEC_AUDIT_LOG: /var/log/modsecurity/audit.log
       MODSEC_AUDIT_LOG_FORMAT: JSON
-      MODSEC_AUDIT_LOG_PARTS: ABCHKZ
+      MODSEC_AUDIT_LOG_PARTS: ABCHKFZ
       MODSEC_RESP_BODY_ACCESS: on
       PARANOIA: 1
     depends_on:
@@ -81,9 +81,29 @@ services:
       - waf_network
     restart: unless-stopped
 
+  # Log Processor Service
+  log-processor:
+    build: ./log_processor
+    container_name: waf_log_processor
+    depends_on:
+      - database
+    environment:
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: waf_test_db
+      DB_USER: waf_user
+      DB_PASSWORD: waf_pass123
+    volumes:
+      - ./logs/modsecurity:/var/log/modsecurity
+      - log_processor_data:/app/data
+    networks:
+      - waf_network
+    restart: unless-stopped
+
 networks:
   waf_network:
     driver: bridge
 
 volumes:
   mysql_data:
+  log_processor_data:

@@ -91,19 +91,15 @@ export interface PaginatedResponse<T> {
 export interface WafLogEntry {
 	id: string;
 	timestamp: string;
-	source_ip: string;
-	source_port: number;
-	dest_ip: string;
-	dest_port: number;
+	client_ip: string;
 	method: string;
 	uri: string;
 	status_code: number;
-	blocked: boolean;
+	is_blocked: boolean;
 	attack_types: string[];
-	rule_files: string[];
 	rule_ids: string[];
-	attack_details: AttackDetail[];
-	messages: any[];
+	severity_score: number;
+	raw_log: any;
 }
 
 export interface AttackDetail {
@@ -121,9 +117,12 @@ export interface WafLogsResponse {
 	has_next: boolean;
 }
 
+export type WafLog = WafLogEntry;
+
 export interface WafStats {
 	total_requests: number;
 	blocked_requests: number;
+	block_rate: number;
 	attack_types: Record<string, number>;
 	top_source_ips: Record<string, number>;
 	recent_attacks: WafLogEntry[];

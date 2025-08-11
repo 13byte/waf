@@ -6,7 +6,7 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('user', 'admin', 'moderator') DEFAULT 'user',
+    role ENUM('USER', 'ADMIN', 'MODERATOR') DEFAULT 'USER',
     profile_image VARCHAR(255) DEFAULT NULL,
     bio TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

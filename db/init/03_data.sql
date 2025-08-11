@@ -1,9 +1,9 @@
 INSERT INTO users (username, email, password_hash, role, bio) VALUES
-('admin', 'admin@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'admin', 'System Administrator'),
-('testuser1', 'user1@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'user', 'Regular test user'),
-('testuser2', 'user2@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'user', 'Another test user'),
-('moderator1', 'mod@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'moderator', 'Forum Moderator'),
-('vulnuser', 'vuln@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'user', 'Test user for vulnerability testing');
+('admin', 'admin@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'ADMIN', 'System Administrator'),
+('testuser1', 'user1@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'USER', 'Regular test user'),
+('testuser2', 'user2@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'USER', 'Another test user'),
+('moderator1', 'mod@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'MODERATOR', 'Forum Moderator'),
+('vulnuser', 'vuln@waftest.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6cDxGqF5Cq', 'USER', 'Test user for vulnerability testing');
 
 INSERT INTO categories (name, description) VALUES
 ('General', 'General discussion topics'),
