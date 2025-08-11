@@ -2,18 +2,24 @@ services:
   # Nginx with ModSecurity and CRS
   nginx-waf:
     image: owasp/modsecurity-crs:nginx
-    container_name: waf_test_nginx
+    container_name: waf_nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./nginx/templates/conf.d:/etc/nginx/templates/conf.d
       - ./logs/nginx:/var/log/nginx
+      - ./logs/modsecurity:/var/log/modsecurity
     environment:
-      - BACKEND=http://backend:8000
-      - FRONTEND=http://frontend:3000
-      - MODSEC_RULE_ENGINE=on
-      - PARANOIA=1
+      BACKEND: http://backend:8000
+      FRONTEND: http://frontend:3000
+      MODSEC_RULE_ENGINE: on
+      MODSEC_AUDIT_ENGINE: on
+      MODSEC_AUDIT_LOG: /var/log/modsecurity/audit.log
+      MODSEC_AUDIT_LOG_FORMAT: JSON
+      MODSEC_AUDIT_LOG_PARTS: ABCHKZ
+      MODSEC_RESP_BODY_ACCESS: on
+      PARANOIA: 1
     depends_on:
       - backend
       - frontend
@@ -24,18 +30,19 @@ services:
   # FastAPI Backend Service
   backend:
     build: ./backend
-    container_name: waf_test_backend
+    container_name: waf_backend
     expose:
       - "8000"
     environment:
-      - DB_HOST=database
-      - DB_PORT=3306
-      - DB_NAME=waf_test_db
-      - DB_USER=waf_user
-      - DB_PASSWORD=waf_pass123
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: waf_test_db
+      DB_USER: waf_user
+      DB_PASSWORD: waf_pass123
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend:/app
+      - ./logs:/app/logs
     depends_on:
       - database
     networks:
@@ -45,12 +52,12 @@ services:
   # React Frontend Service
   frontend:
     build: ./frontend
-    container_name: waf_test_frontend
+    container_name: waf_frontend
     expose:
       - "3000"
     environment:
-      - NODE_ENV=production
-      - ORIGIN=http://localhost
+      NODE_ENV: production
+      ORIGIN: http://localhost
     networks:
       - waf_network
     restart: unless-stopped
@@ -58,7 +65,7 @@ services:
   # Database (MySQL)
   database:
     image: mysql:8.0
-    container_name: waf_test_database
+    container_name: waf_database
     environment:
       MYSQL_ROOT_PASSWORD: root123
       MYSQL_DATABASE: waf_test_db
