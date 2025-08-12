@@ -1,6 +1,7 @@
 import time
 import os
 import json
+import re
 from datetime import datetime
 import logging
 
@@ -10,6 +11,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from attack_detection import AttackDetectionEngine
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,17 +31,36 @@ Base = declarative_base()
 
 class WafLog(Base):
     __tablename__ = "waf_logs"
+    
+    # Primary Key
     id = Column(Integer, primary_key=True)
     log_unique_id = Column(String(255), unique=True, nullable=False)
+    
+    # Timestamp
     timestamp = Column(DateTime, nullable=False)
-    client_ip = Column(String(50), nullable=False)
+    
+    # Network Information (aligned with DB schema)
+    source_ip = Column(String(50), nullable=False)
+    source_port = Column(Integer)
+    dest_ip = Column(String(50))
+    dest_port = Column(Integer)
+    target_website = Column(String(255))
+    
+    # Request Information
     method = Column(String(10), nullable=False)
     uri = Column(String(2048), nullable=False)
     status_code = Column(Integer, nullable=False)
+    
+    # Attack Detection (aligned with DB schema)
     is_blocked = Column(Boolean, nullable=False)
+    is_attack = Column(Boolean, default=False)
     attack_types = Column(JSON)
     rule_ids = Column(JSON)
+    rule_files = Column(JSON)
     severity_score = Column(Integer, default=0)
+    anomaly_score = Column(Integer, default=0)
+    
+    # Raw Data
     raw_log = Column(JSON)
 
 engine = None
@@ -61,68 +82,59 @@ def get_db_session():
 
 # --- Log Processing ---
 def parse_log_entry(log_json: dict):
+    """
+    Parse ModSecurity log entry using attack detection engine
+    
+    Args:
+        log_json: Raw ModSecurity log entry
+        
+    Returns:
+        WafLog instance or None if parsing fails
+    """
     try:
-        transaction = log_json.get("transaction", {})
-        request = transaction.get("request", {})
-        response = transaction.get("response", {})
+        # Debug: Check what we're receiving
+        transaction = log_json.get('transaction', {})
+        logging.debug(f"parse_log_entry received: messages={len(transaction.get('messages', []))}, transaction={bool(transaction)}")
         
-        # Ensure log_json is a standard dictionary
-        log_json_dict = dict(log_json)
+        # Use attack detection engine
+        parsed_data = AttackDetectionEngine.analyze_log_entry(log_json)
         
-        logging.debug(f"Type of log_json_dict: {type(log_json_dict)}")
-        logging.debug(f"Keys in log_json_dict: {log_json_dict.keys()}")
-        for key, value in log_json_dict.items():
-            logging.debug(f"  Key: {repr(key)}, Value type: {type(value)}")
-        logging.debug(f"Full log_json (as dict): {log_json_dict}")
+        if not parsed_data:
+            logging.warning(f"Failed to parse log entry: {log_json.get('transaction', {}).get('unique_id', 'unknown')}")
+            return None
         
-        messages = log_json_dict.get("messages", [])
-        logging.debug(f"Raw messages extracted (using .get()): {messages}")
-        
-        # Try direct access to see if it's different
-        try:
-            direct_messages = log_json_dict['messages']
-            logging.debug(f"Raw messages extracted (direct access): {direct_messages}")
-        except KeyError:
-            direct_messages = []
-            logging.debug("Messages key not found via direct access.")
-
-        status_code = response.get("http_code", 0)
-        is_blocked = status_code == 403 and len(messages) > 0
-        
-        logging.debug(f"Processing log: unique_id={transaction.get('unique_id')}, status_code={status_code}, messages_len={len(messages)}, is_blocked={is_blocked}")
-        
-        attack_types, rule_ids, severity_score = [], [], 0
-        for msg in messages:
-            details = msg.get("details", {})
-            tags = details.get("tags", [])
-            for tag in tags:
-                if tag.startswith("attack-"):
-                    attack_type = tag.split('-', 1)[1].upper()
-                    if attack_type not in attack_types:
-                        attack_types.append(attack_type)
-            
-            rule_id = details.get("ruleId")
-            if rule_id and rule_id not in rule_ids:
-                rule_ids.append(rule_id)
-            
-            severity = details.get("severity", "0")
-            severity_score += int(severity) if severity.isdigit() else 0
-
+        # Create WafLog instance with parsed data (aligned to DB schema)
         return WafLog(
-            log_unique_id=transaction.get("unique_id"),
-            timestamp=datetime.strptime(transaction.get("time_stamp"), "%a %b %d %H:%M:%S %Y"),
-            client_ip=transaction.get("client_ip"),
-            method=request.get("method"),
-            uri=request.get("uri"),
-            status_code=status_code,
-            is_blocked=is_blocked,
-            attack_types=attack_types,
-            rule_ids=rule_ids,
-            severity_score=severity_score,
+            log_unique_id=parsed_data['log_unique_id'],
+            timestamp=parsed_data['timestamp'],
+            
+            # Network information
+            source_ip=parsed_data.get('source_ip', parsed_data.get('client_ip', 'unknown')),
+            source_port=parsed_data.get('source_port'),
+            dest_ip=parsed_data.get('dest_ip'),
+            dest_port=parsed_data.get('dest_port'),
+            target_website=parsed_data.get('target_website'),
+            
+            # Request information
+            method=parsed_data['method'],
+            uri=parsed_data['uri'],
+            status_code=parsed_data['status_code'],
+            
+            # Attack detection
+            is_blocked=parsed_data['is_blocked'],
+            is_attack=parsed_data.get('is_attack', False),
+            attack_types=parsed_data['attack_types'],
+            rule_ids=parsed_data['rule_ids'],
+            rule_files=parsed_data.get('rule_files'),
+            severity_score=parsed_data['severity_score'],
+            anomaly_score=parsed_data.get('anomaly_score', 0),
+            
+            # Raw data
             raw_log=log_json
         )
-    except (KeyError, TypeError, ValueError) as e:
-        logging.warning(f"Could not parse log entry: {e} - Entry: {log_json}")
+        
+    except Exception as e:
+        logging.error(f"Error parsing log entry: {e}")
         return None
 
 def process_new_logs(db, last_position):
@@ -131,10 +143,34 @@ def process_new_logs(db, last_position):
 
     with open(LOG_FILE_PATH, 'r') as f:
         f.seek(last_position)
+        logging.debug(f"Seeking to position: {last_position}")
+        
+        # If we're not at the beginning of the file,
+        # we might be in the middle of a line, so skip to the next complete line
+        if last_position > 0:
+            # Read and discard the potentially partial first line
+            partial = f.readline()
+            logging.debug(f"Skipped potentially partial line after seek")
+        
         for line in f:
             try:
                 logging.debug(f"Raw line before JSON load: {repr(line)}")
-                log_data = json.loads(line)
+                # Fix ModSecurity JSON bug: "OWASP_CRS/4.17.1\"" should be "OWASP_CRS/4.17.1"
+                # This is a known ModSecurity v3 bug where the components field is not properly escaped
+                # Fix the specific pattern we see in the logs: "OWASP_CRS/4.17.1\""]
+                line = line.replace('OWASP_CRS/4.17.1\\""', 'OWASP_CRS/4.17.1"')
+                
+                try:
+                    log_data = json.loads(line)
+                except json.JSONDecodeError as e:
+                    # If still failing, try more aggressive fixing
+                    logging.debug(f"First JSON parse failed: {e}")
+                    logging.debug(f"Problem area in line: {line[max(0, e.pos-50):min(len(line), e.pos+50)]}")
+                    # Remove the entire problematic components field
+                    line = re.sub(r'"components":\[[^\]]*\]', '"components":["OWASP_CRS/4.17.1"]', line)
+                    log_data = json.loads(line)
+                transaction = log_data.get('transaction', {})
+                logging.debug(f"After JSON parse: messages={len(transaction.get('messages', []))}, keys={list(log_data.keys())}")
                 parsed_log = parse_log_entry(log_data)
                 if parsed_log:
                     db.add(parsed_log)

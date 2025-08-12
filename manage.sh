@@ -50,6 +50,12 @@ start_services() {
     echo "⏳ Waiting for WAF initialization..."
     sleep 5
     
+    echo "📝 Starting log processor..."
+    docker-compose -f "$COMPOSE_FILE" up -d log-processor
+    
+    echo "⏳ Waiting for log processor startup..."
+    sleep 3
+    
     echo "✅ All services started!"
     echo "📍 WAF Frontend: http://localhost"
     echo "📍 Direct API: http://localhost/api/"

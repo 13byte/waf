@@ -90,16 +90,25 @@ export interface PaginatedResponse<T> {
 
 export interface WafLogEntry {
 	id: string;
+	log_unique_id: string;
 	timestamp: string;
-	client_ip: string;
+	source_ip: string;
+	source_port: number | null;
+	dest_ip: string | null;
+	dest_port: number | null;
+	target_website: string | null;
 	method: string;
 	uri: string;
 	status_code: number;
 	is_blocked: boolean;
-	attack_types: string[];
-	rule_ids: string[];
+	is_attack: boolean;
+	attack_types: string[] | null;
+	rule_ids: string[] | null;
+	rule_files: string[] | null;
 	severity_score: number;
+	anomaly_score: number;
 	raw_log: any;
+	created_at?: string;
 }
 
 export interface AttackDetail {

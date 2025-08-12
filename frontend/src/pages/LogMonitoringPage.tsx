@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Search, AlertTriangle, Eye, Clock, Globe, Ban, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Search, AlertTriangle, Clock, Globe, Ban, CheckCircle, ChevronDown, ChevronUp, Activity, Server, Monitor, FileWarning } from 'lucide-react';
 import { apiClient } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
@@ -23,32 +23,68 @@ const StatCard = ({ title, value, icon, rate }: { title: string; value: number |
 
 const LogDetailView = ({ log }: { log: WafLog }) => {
   return (
-    <div className="border-t bg-gray-50 p-4 animate-slideDown">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
-        <div>
-          <h4 className="font-semibold text-gray-800 mb-2">Request Details</h4>
-          <div className="space-y-1">
-            <p><strong className="w-24 inline-block">URI:</strong> <code className="bg-gray-200 px-1 rounded text-xs break-all">{log.uri}</code></p>
-            <p><strong className="w-24 inline-block">Method:</strong> {log.method}</p>
-            <p><strong className="w-24 inline-block">Status Code:</strong> {log.status_code}</p>
-            <p><strong className="w-24 inline-block">Severity:</strong> <span className="font-bold text-red-600">{log.severity_score}</span></p>
+    <tr>
+      <td colSpan={8} className="bg-gray-50 px-4 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-sm">
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-2">🌐 Network Information</h4>
+            <div className="space-y-1 bg-white p-3 rounded">
+              <p><strong className="w-32 inline-block">Source:</strong> {log.source_ip}:{log.source_port || 'N/A'}</p>
+              <p><strong className="w-32 inline-block">Destination:</strong> {log.dest_ip || 'N/A'}:{log.dest_port || 'N/A'}</p>
+              <p><strong className="w-32 inline-block">Target Website:</strong> <span className="text-blue-600 font-medium">{log.target_website || 'N/A'}</span></p>
+            </div>
           </div>
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-800 mb-2">Attack Information</h4>
-          <div className="space-y-1">
-            <p><strong className="w-24 inline-block">Attack Types:</strong> {log.attack_types?.join(', ') || 'N/A'}</p>
-            <p><strong className="w-24 inline-block">Rule IDs:</strong> {log.rule_ids?.join(', ') || 'N/A'}</p>
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-2">📊 Request Details</h4>
+            <div className="space-y-1 bg-white p-3 rounded">
+              <p><strong className="w-32 inline-block">Method:</strong> <span className="font-mono">{log.method}</span></p>
+              <p><strong className="w-32 inline-block">Status Code:</strong> <span className={`font-bold ${log.status_code >= 400 ? 'text-red-600' : 'text-green-600'}`}>{log.status_code}</span></p>
+              <p><strong className="w-32 inline-block">URI:</strong> <code className="bg-gray-100 px-1 rounded text-xs break-all">{log.uri}</code></p>
+            </div>
           </div>
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-2">🛡️ Security Analysis</h4>
+            <div className="space-y-1 bg-white p-3 rounded">
+              <p><strong className="w-32 inline-block">Attack Types:</strong> 
+                {log.attack_types && log.attack_types.length > 0 ? (
+                  <span className="ml-2">
+                    {log.attack_types.map((type, i) => (
+                      <span key={i} className="inline-block bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded mr-1">{type}</span>
+                    ))}
+                  </span>
+                ) : <span className="text-gray-500">None detected</span>}
+              </p>
+              <p><strong className="w-32 inline-block">Severity Score:</strong> <span className={`font-bold ${log.severity_score > 0 ? 'text-orange-600' : 'text-gray-500'}`}>{log.severity_score}</span></p>
+              <p><strong className="w-32 inline-block">Anomaly Score:</strong> <span className={`font-bold ${log.anomaly_score > 0 ? 'text-orange-600' : 'text-gray-500'}`}>{log.anomaly_score}</span></p>
+              <p><strong className="w-32 inline-block">Rule IDs:</strong> <span className="font-mono text-xs">{log.rule_ids?.join(', ') || 'None'}</span></p>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-2">🚦 Detection Status</h4>
+            <div className="space-y-1 bg-white p-3 rounded">
+              <p><strong className="w-32 inline-block">Blocked:</strong> 
+                {log.is_blocked ? 
+                  <span className="text-red-600 font-bold ml-2">✓ Yes (Blocked by WAF)</span> : 
+                  <span className="text-green-600 ml-2">✗ No (Allowed through)</span>}
+              </p>
+              <p><strong className="w-32 inline-block">Attack Detected:</strong> 
+                {log.is_attack ? 
+                  <span className="text-red-600 font-bold ml-2">⚠️ Yes</span> : 
+                  <span className="text-gray-500 ml-2">No</span>}
+              </p>
+            </div>
+          </div>
+          {log.raw_log && (
+            <div className="lg:col-span-2">
+              <h4 className="font-semibold text-gray-800 mb-2">📝 Raw Log Data</h4>
+              <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-auto max-h-48 font-mono">
+                {JSON.stringify(log.raw_log, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
-        <div className="lg:col-span-2">
-          <h4 className="font-semibold text-gray-800 mb-2">Raw Log</h4>
-          <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto max-h-48 font-mono">
-            {JSON.stringify(log.raw_log, null, 2)}
-          </pre>
-        </div>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 };
 
@@ -65,7 +101,15 @@ const LogMonitoringPage: React.FC = () => {
   
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [filters, setFilters] = useState({ search: '', attack_type: '', blocked_only: false });
+  const [filters, setFilters] = useState({ 
+    search: '', 
+    attack_type: '', 
+    blocked_only: false,
+    is_attack_only: false,
+    status_code: '',
+    start_date: '',
+    end_date: ''
+  });
 
   const LOGS_PER_PAGE = 20;
 
@@ -73,11 +117,20 @@ const LogMonitoringPage: React.FC = () => {
     setLoading(true);
     setError(null);
     
-    const logsPromise = apiClient.getWafLogs({
+    // Clean up filters before sending
+    const cleanFilters = {
       skip: (page - 1) * LOGS_PER_PAGE,
       limit: LOGS_PER_PAGE,
-      ...filters
-    });
+      search: filters.search,
+      attack_type: filters.attack_type,
+      blocked_only: filters.blocked_only,
+      is_attack_only: filters.is_attack_only,
+      ...(filters.status_code && { status_code: parseInt(filters.status_code) }),
+      ...(filters.start_date && { start_date: filters.start_date }),
+      ...(filters.end_date && { end_date: filters.end_date })
+    };
+    
+    const logsPromise = apiClient.getWafLogs(cleanFilters);
     const statsPromise = apiClient.getWafStats();
 
     const [logsResponse, statsResponse] = await Promise.all([logsPromise, statsPromise]);
@@ -155,42 +208,92 @@ const LogMonitoringPage: React.FC = () => {
       {/* Filters */}
       <div className="card mb-6">
         <div className="card-body">
-          <form onSubmit={handleFilterSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input type="text" name="search" value={filters.search} onChange={handleFilterChange} className="input-field pl-10" placeholder="Search by IP or URI..."/>
+          <form onSubmit={handleFilterSubmit} className="space-y-4">
+            {/* First Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input type="text" name="search" value={filters.search} onChange={handleFilterChange} 
+                    className="input-field pl-10" placeholder="Search by IP, URI, domain, method..."/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Attack Type</label>
+                <select name="attack_type" value={filters.attack_type} onChange={handleFilterChange} className="input-field">
+                  <option value="">All Types</option>
+                  <option value="XSS">XSS</option>
+                  <option value="SQLI">SQL Injection</option>
+                  <option value="RCE">RCE</option>
+                  <option value="LFI">LFI</option>
+                  <option value="RFI">RFI</option>
+                  <option value="PHP">PHP Injection</option>
+                  <option value="JAVA">Java Attack</option>
+                  <option value="SCANNER">Scanner Detection</option>
+                  <option value="PROTOCOL">Protocol Violation</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status Code</label>
+                <select name="status_code" value={filters.status_code} onChange={handleFilterChange} className="input-field">
+                  <option value="">All Codes</option>
+                  <option value="200">200 OK</option>
+                  <option value="403">403 Forbidden</option>
+                  <option value="404">404 Not Found</option>
+                  <option value="500">500 Error</option>
+                </select>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Attack Type</label>
-              <select name="attack_type" value={filters.attack_type} onChange={handleFilterChange} className="input-field">
-                <option value="">All Types</option>
-                <option value="XSS">XSS</option>
-                <option value="SQLI">SQL Injection</option>
-                <option value="RCE">RCE</option>
-                <option value="LFI">LFI</option>
-                <option value="PROTOCOL">Protocol Violation</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center h-9">
-                <input type="checkbox" name="blocked_only" checked={filters.blocked_only} onChange={handleFilterChange} className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                <label className="ml-2 text-sm text-gray-700">Blocked Only</label>
+            
+            {/* Second Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input type="date" name="start_date" value={filters.start_date} onChange={handleFilterChange} 
+                  className="input-field" />
               </div>
-              <button type="submit" className="btn-primary">Apply</button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input type="date" name="end_date" value={filters.end_date} onChange={handleFilterChange} 
+                  className="input-field" />
+              </div>
+              <div className="flex items-end space-x-4">
+                <label className="flex items-center">
+                  <input type="checkbox" name="blocked_only" checked={filters.blocked_only} onChange={handleFilterChange} 
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span className="ml-2 text-sm text-gray-700">Blocked Only</span>
+                </label>
+                <label className="flex items-center">
+                  <input type="checkbox" name="is_attack_only" checked={filters.is_attack_only} onChange={handleFilterChange} 
+                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
+                  <span className="ml-2 text-sm text-gray-700">Attacks Only</span>
+                </label>
+              </div>
+              <div className="flex items-end justify-end space-x-2">
+                <button type="button" onClick={() => {
+                  setFilters({ 
+                    search: '', attack_type: '', blocked_only: false, 
+                    is_attack_only: false, status_code: '', start_date: '', end_date: '' 
+                  });
+                  setPage(1);
+                }} className="btn-secondary">Clear</button>
+                <button type="submit" className="btn-primary">Apply Filters</button>
+              </div>
             </div>
           </form>
         </div>
       </div>
 
       {/* Logs Table */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-xl font-semibold text-gray-900">WAF Logs</h2>
+      <div className="card overflow-hidden">
+        <div className="card-header bg-gray-800 text-white">
+          <h2 className="text-xl font-semibold flex items-center">
+            <Activity className="h-5 w-5 mr-2" />
+            WAF Request Logs
+          </h2>
         </div>
-        <div className="card-body p-0">
+        <div className="overflow-x-auto">
           {loading ? (
             <div className="p-8 text-center text-gray-600">Loading logs...</div>
           ) : error ? (
@@ -198,25 +301,139 @@ const LogMonitoringPage: React.FC = () => {
           ) : logs.length === 0 ? (
             <div className="p-8 text-center text-gray-600">No logs found matching your criteria.</div>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {logs.map((log) => (
-                <div key={log.id}>
-                  <div className="p-4 cursor-pointer flex items-center justify-between hover:bg-gray-50" onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
-                    <div className="flex items-center space-x-4 flex-1">
-                      {log.is_blocked ? <Ban className="h-5 w-5 text-red-500 flex-shrink-0"/> : <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0"/>}
-                      <div className="w-48"><Clock className="h-4 w-4 inline-block mr-1 text-gray-400"/>{new Date(log.timestamp).toLocaleString()}</div>
-                      <div className="w-32 font-mono">{log.client_ip}</div>
-                      <div className="flex-1 font-medium text-gray-800 truncate">{log.method} {log.uri}</div>
-                      <div className="w-32 text-center"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${log.attack_types && log.attack_types.length > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>{log.attack_types?.[0] || 'Normal'}</span></div>
-                    </div>
-                    {expandedLog === log.id ? <ChevronUp className="h-5 w-5 text-gray-500"/> : <ChevronDown className="h-5 w-5 text-gray-500"/>}
-                  </div>
-                  {expandedLog === log.id && <LogDetailView log={log} />}
-                </div>
-              ))}
-            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attack</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {logs.map((log) => (
+                  <React.Fragment key={log.id}>
+                    <tr className={`hover:bg-gray-50 cursor-pointer ${log.is_blocked ? 'bg-red-50' : ''}`} 
+                        onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm">
+                        <div className="flex items-center">
+                          <Clock className="h-3 w-3 mr-1 text-gray-400"/>
+                          <span className="text-xs">{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-xs font-mono">
+                        {log.source_ip}:{log.source_port || 'N/A'}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-xs font-mono">
+                        {log.dest_ip || 'N/A'}:{log.dest_port || 'N/A'}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className="text-xs font-medium text-blue-600">{log.target_website || 'N/A'}</span>
+                      </td>
+                      <td className="px-3 py-3 text-xs">
+                        <span className="font-bold mr-2">{log.method}</span>
+                        <span className="text-gray-600 truncate inline-block max-w-xs">{log.uri}</span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        {log.is_attack ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            {log.attack_types?.[0] || 'Attack'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Normal
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        {log.is_blocked ? (
+                          <span title="Blocked">
+                            <Ban className="h-5 w-5 text-red-500 inline-block" />
+                          </span>
+                        ) : (
+                          <span title="Allowed">
+                            <CheckCircle className="h-5 w-5 text-green-500 inline-block" />
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        {expandedLog === log.id ? 
+                          <ChevronUp className="h-4 w-4 text-gray-500"/> : 
+                          <ChevronDown className="h-4 w-4 text-gray-500"/>}
+                      </td>
+                    </tr>
+                    {expandedLog === log.id && <LogDetailView log={log} />}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button 
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="btn-secondary"
+              >
+                Previous
+              </button>
+              <button 
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="btn-secondary"
+              >
+                Next
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing page <span className="font-medium">{page}</span> of{' '}
+                  <span className="font-medium">{totalPages}</span>
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i + 1}
+                      onClick={() => setPage(i + 1)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === i + 1
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

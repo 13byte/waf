@@ -68,18 +68,39 @@ class Comment(Base):
 
 class WafLog(Base):
     __tablename__ = "waf_logs"
+    
+    # Primary Key
     id = Column(Integer, primary_key=True, index=True)
-    log_unique_id = Column(String(255), unique=True, nullable=False)
-    timestamp = Column(DateTime, nullable=False)
-    client_ip = Column(String(50), nullable=False)
+    log_unique_id = Column(String(255), unique=True, nullable=False, index=True)
+    
+    # Timestamp
+    timestamp = Column(DateTime, nullable=False, index=True)
+    
+    # Network Information
+    source_ip = Column(String(50), nullable=False, index=True)
+    source_port = Column(Integer)
+    dest_ip = Column(String(50))
+    dest_port = Column(Integer)
+    target_website = Column(String(255))
+    
+    # Request Information
     method = Column(String(10), nullable=False)
-    uri = Column(String(2048), nullable=False)
-    status_code = Column(Integer, nullable=False)
-    is_blocked = Column(Boolean, nullable=False)
+    uri = Column(String(2048), nullable=False, index=True)
+    status_code = Column(Integer, nullable=False, index=True)
+    
+    # Attack Detection
+    is_blocked = Column(Boolean, nullable=False, index=True)
+    is_attack = Column(Boolean, nullable=False, index=True)
     attack_types = Column(JSON)
     rule_ids = Column(JSON)
+    rule_files = Column(JSON)
     severity_score = Column(Integer, default=0)
+    anomaly_score = Column(Integer, default=0)
+    
+    # Raw Data
     raw_log = Column(JSON)
+    
+    # Audit Trail
     created_at = Column(TIMESTAMP, default=func.now())
 
 class File(Base):
