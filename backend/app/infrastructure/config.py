@@ -1,26 +1,33 @@
 from pydantic_settings import BaseSettings
 from typing import List
+import os
+import secrets
 
 class Settings(BaseSettings):
-    db_host: str = "localhost"
-    db_port: int = 3306
-    db_name: str = "waf_test_db"
-    db_user: str = "waf_user"
-    db_password: str = "waf_pass123"
+    # Database settings from environment
+    db_host: str = os.getenv("DB_HOST", "localhost")
+    db_port: int = int(os.getenv("DB_PORT", "3306"))
+    db_name: str = os.getenv("DB_NAME", "waf_test_db")
+    db_user: str = os.getenv("DB_USER", "waf_user")
+    db_password: str = os.getenv("DB_PASSWORD", "waf_pass123")
     
-    secret_key: str = "your-secret-key-change-this-in-production"
+    # Security settings - use environment or generate secure defaults
+    secret_key: str = os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(32)
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = int(os.getenv("TOKEN_EXPIRE_MINUTES", "30"))
     
+    # File upload settings
     upload_dir: str = "/app/uploads"
     max_file_size: int = 10485760
     allowed_extensions: str = "jpg,jpeg,png,gif,pdf,txt,doc,docx,exe,bat,sh,php,asp,jsp"
     
-    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    # CORS settings
+    cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost")
     api_version: str = "v1"
     
-    debug: bool = True
-    log_level: str = "INFO"
+    # Application settings
+    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
     
     @property
     def database_url(self) -> str:

@@ -1,41 +1,41 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@context/AuthContext';
 import ErrorBoundary from '@components/ErrorBoundary';
-import Header from '@components/Header';
-import HomePage from '@pages/HomePage';
+
+// Layout
+import { MainLayout } from './presentation/layouts/MainLayout';
+
+// Pages
+import { DashboardPage } from './presentation/pages/DashboardPage';
+import { SecurityEventsPage } from './presentation/pages/SecurityEventsPage';
+import { AttackLabPage } from './presentation/pages/AttackLabPage';
+import { AnalyticsPage } from './presentation/pages/AnalyticsPage';
+import { ConfigurationPage } from './presentation/pages/ConfigurationPage';
 import LoginPage from '@pages/LoginPage';
-import RegisterPage from '@pages/RegisterPage';
-import PostsPage from '@pages/PostsPage';
-import VulnerablePage from '@pages/VulnerablePage';
-import LogMonitoringPage from '@pages/LogMonitoringPage';
-import ForbiddenPage from '@pages/errors/ForbiddenPage';
 import NotFoundPage from '@pages/errors/NotFoundPage';
-import ServerErrorPage from '@pages/errors/ServerErrorPage';
-import PostDetailPage from '@pages/PostDetailPage';
 
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Header />
-          <main>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/posts" element={<PostsPage />} />
-              <Route path="/posts/:id" element={<PostDetailPage />} />
-              <Route path="/vulnerable" element={<VulnerablePage />} />
-              <Route path="/logs" element={<LogMonitoringPage />} />
-              <Route path="/error/403" element={<ForbiddenPage />} />
-              <Route path="/error/404" element={<NotFoundPage />} />
-              <Route path="/error/500" element={<ServerErrorPage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </main>
-        </div>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          
+          {/* Protected routes with new layout */}
+          <Route path="/" element={<MainLayout />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="security-events" element={<SecurityEventsPage />} />
+            <Route path="attack-lab" element={<AttackLabPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="config" element={<ConfigurationPage />} />
+          </Route>
+          
+          {/* 404 */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
       </AuthProvider>
     </ErrorBoundary>
   );

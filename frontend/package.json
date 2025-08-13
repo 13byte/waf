@@ -1,6 +1,7 @@
 {
-  "name": "waf-test-frontend",
+  "name": "waf-soc-frontend",
   "version": "1.0.0",
+  "description": "WAF Security Operations Center - Frontend Dashboard",
   "private": true,
   "type": "module",
   "scripts": {

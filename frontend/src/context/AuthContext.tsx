@@ -65,14 +65,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       apiClient.setToken(token);
       dispatch({ type: 'SET_LOADING', payload: true });
 
-      const response = await apiClient.getCurrentUser();
-      
-      if (response.data) {
-        dispatch({ type: 'SET_USER', payload: response.data });
-      } else {
+      try {
+        const response = await apiClient.getCurrentUser();
+        
+        if (response.data) {
+          dispatch({ type: 'SET_USER', payload: response.data });
+        } else {
+          localStorage.removeItem('auth_token');
+          apiClient.setToken(null);
+        }
+      } catch (error) {
+        // Token might be invalid or expired
         localStorage.removeItem('auth_token');
         apiClient.setToken(null);
+        console.error('Auth initialization failed:', error);
       }
+      
       dispatch({ type: 'SET_LOADING', payload: false });
     };
 

@@ -1,7 +1,7 @@
 [project]
-name = "waf-test-backend"
-version = "0.1.0"
-description = "FastAPI backend for WAF testing"
+name = "waf-soc-backend"
+version = "1.0.0"
+description = "WAF Security Operations Center - Backend API"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi",
@@ -18,6 +18,8 @@ dependencies = [
   "python-multipart",
   "aiofiles",
   "python-dotenv",
+  "websockets",
+  "httpx",
 ]
 
 [project.optional-dependencies]
