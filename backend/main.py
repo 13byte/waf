@@ -10,7 +10,10 @@ from app.presentation.routers import (
     vulnerable, 
     monitoring,
     dashboard,
-    waf_config
+    waf_config,
+    websocket,
+    stats,
+    geoip
 )
 import os
 import asyncio
@@ -61,6 +64,9 @@ app.include_router(vulnerable.router, prefix="/api")
 app.include_router(monitoring.router)  # Has its own prefix
 app.include_router(dashboard.router)   # Has its own prefix
 app.include_router(waf_config.router)  # Has its own prefix
+app.include_router(websocket.router, prefix="/api")  # WebSocket routes
+app.include_router(stats.router)  # Has its own prefix /api/monitoring
+app.include_router(geoip.router)  # Has its own prefix /api/geoip
 
 
 @app.get("/")

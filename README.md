@@ -25,10 +25,12 @@ Monitor and manage your WAF in real-time. Track security events, analyze attack 
 ## Features
 
 ### Security Monitoring
-- Real-time event tracking
-- Attack pattern analysis
-- Threat level indicators
-- IP reputation tracking
+- Real-time event tracking via WebSocket
+- Attack pattern analysis with rule-based detection
+- Threat level indicators with anomaly scoring
+- IP and port tracking
+- Event details with raw JSON logs
+- Exportable CSV reports
 
 ### WAF Management
 - Configure protection rules
@@ -41,6 +43,10 @@ Monitor and manage your WAF in real-time. Track security events, analyze attack 
 - Test SQL injection
 - Test path traversal
 - Test command injection
+- Test XXE injection
+- Test SSTI attacks
+- Test header manipulation
+- Test authentication bypass
 
 ## Quick Start
 
@@ -110,7 +116,7 @@ waf/
 ### Security Events
 - `GET /api/security-events` - List events with filters
 - `GET /api/security-events/{id}` - Event details
-- `WS /api/security-events/stream` - Real-time stream
+- `WS /api/ws/security-events` - Real-time WebSocket stream
 
 ### WAF Configuration
 - `GET /api/waf/config` - Get configuration
@@ -118,10 +124,14 @@ waf/
 - `POST /api/waf/config/rules` - Add custom rules
 
 ### Attack Lab
-- `POST /api/vulnerable/xss` - XSS test
-- `POST /api/vulnerable/sqli` - SQL injection test
-- `POST /api/vulnerable/lfi` - Path traversal test
-- `POST /api/vulnerable/rce` - Command injection test
+- `GET /api/vulnerable/xss` - XSS test
+- `GET /api/vulnerable/sqli` - SQL injection test
+- `GET /api/vulnerable/path-traversal` - Path traversal test
+- `GET /api/vulnerable/command-injection` - Command injection test
+- `POST /api/vulnerable/xxe` - XXE injection test
+- `GET /api/vulnerable/ssti` - Template injection test
+- `GET /api/vulnerable/header-manipulation` - Header manipulation test
+- `POST /api/vulnerable/auth-bypass` - Authentication bypass test
 
 ## Development
 
@@ -129,7 +139,9 @@ waf/
 ```bash
 cd frontend
 npm install
-npm run dev  # Start dev server on port 5173
+npm run dev     # Start dev server on port 5173
+npm run build   # Build for production
+npm run lint    # Run linter
 ```
 
 ### Backend Development
@@ -137,6 +149,7 @@ npm run dev  # Start dev server on port 5173
 cd backend
 # Uses uv for dependency management
 # Backend runs on port 8000 in Docker
+docker exec -it waf_backend bash  # Access backend container
 ```
 
 ### Database Access
@@ -144,5 +157,56 @@ cd backend
 # Connect to MySQL
 docker exec -it waf_database mysql -u waf_user -p
 # Password: waf_pass123
+
+# Database name: waf_test_db
+# Root password: root123
 ```
+
+### View Logs
+```bash
+# ModSecurity audit logs
+tail -f logs/modsecurity/audit.log
+
+# Container logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f log-processor
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Login issues after page refresh**
+   - Token and user info are stored in localStorage
+   - Check browser console for errors
+   - Clear localStorage if needed: `localStorage.clear()`
+
+2. **WAF not blocking attacks**
+   - Check paranoia level (default: 1)
+   - Verify ModSecurity is enabled: `MODSEC_RULE_ENGINE=on`
+   - Check audit logs: `tail -f logs/modsecurity/audit.log`
+
+3. **Missing security events**
+   - Verify log-processor is running: `docker ps | grep log-processor`
+   - Check database connection
+   - Review processor logs: `docker-compose logs log-processor`
+
+4. **WebSocket connection failed**
+   - Ensure backend is running
+   - Check nginx proxy configuration
+   - Verify `/api/ws/security-events` endpoint
+
+5. **Database connection errors**
+   - Confirm MySQL is running: `docker ps | grep database`
+   - Check credentials in docker-compose.yml
+   - Verify database exists: `waf_test_db`
+
+## Security Notes
+
+- WAF uses OWASP CRS with configurable paranoia levels
+- All traffic passes through ModSecurity before reaching the application
+- Attack detection is based on rule files, not just status codes
+- Custom rules can be added following naming patterns like `CUSTOM-XXX-ATTACK-*`
+- Anomaly scoring determines if requests are blocked (default threshold: 5)
 

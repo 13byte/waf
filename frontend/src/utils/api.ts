@@ -198,8 +198,84 @@ class ApiClient {
     return this.request(`/monitoring/logs${queryString}`);
   }
 
-  async getWafStats(): Promise<ApiResponse<WafStats>> {
-    return this.request('/monitoring/stats');
+  async getWafStats(timeRange?: string): Promise<ApiResponse<any>> {
+    // Get comprehensive stats from monitoring endpoint
+    const endDate = new Date();
+    let startDate = new Date();
+    
+    if (timeRange === '24h') {
+      startDate.setHours(startDate.getHours() - 24);
+    } else if (timeRange === '7d') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (timeRange === '30d') {
+      startDate.setDate(startDate.getDate() - 30);
+    } else {
+      startDate.setDate(startDate.getDate() - 7); // Default to 7 days
+    }
+    
+    const params = new URLSearchParams({
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString()
+    });
+    
+    // Get main stats
+    const statsResponse = await this.request<any>(`/monitoring/stats?${params.toString()}`);
+    
+    // Get additional summary for backward compatibility
+    const summaryResponse = await this.request<any>('/security-events/stats/summary?time_range=' + (timeRange || '7d'));
+    
+    // Safely merge both responses
+    const statsData = statsResponse.data || {};
+    const summaryData = summaryResponse.data || {};
+    
+    return {
+      data: {
+        // Merge summary data
+        ...(statsData.summary || {}),
+        ...(summaryData || {}),
+        // Use available attack types data
+        top_attack_types: statsData.attack_types || summaryData.top_attack_types || [],
+        // Use available IP data
+        top_source_ips: statsData.top_attacking_ips || summaryData.top_source_ips || [],
+        // Include real data from backend
+        hourly_trends: statsData.hourly_trends || null,
+        severity_distribution: statsData.severity_distribution || null,
+        method_stats: statsData.method_stats || [],
+        response_codes: statsData.response_codes || [],
+        country_stats: statsData.country_stats || []
+      }
+    };
+  }
+
+  // GeoIP API
+  async getGeoipStatus(): Promise<ApiResponse<any>> {
+    return this.request('/geoip/status');
+  }
+
+  async uploadGeoipDatabase(file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const headers: HeadersInit = {};
+      if (this.token) {
+        headers['Authorization'] = `Bearer ${this.token}`;
+      }
+      const response = await fetch(`${this.baseUrl}/geoip/upload`, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async deleteGeoipDatabase(): Promise<ApiResponse<any>> {
+    return this.request('/geoip/database', { method: 'DELETE' });
   }
 }
 

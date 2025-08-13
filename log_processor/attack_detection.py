@@ -9,21 +9,22 @@ class AttackDetectionEngine:
     Attack detection logic based on ModSecurity rule analysis
     """
     
-    # Rule file patterns for attack classification
+    # Rule file patterns for attack classification (matches partial paths)
     ATTACK_RULE_PATTERNS = {
-        'XSS': r'REQUEST-941-APPLICATION-ATTACK-XSS\.conf',
-        'SQLI': r'REQUEST-942-APPLICATION-ATTACK-SQLI\.conf', 
-        'LFI': r'REQUEST-930-APPLICATION-ATTACK-LFI\.conf',
-        'RFI': r'REQUEST-931-APPLICATION-ATTACK-RFI\.conf',
-        'RCE': r'REQUEST-932-APPLICATION-ATTACK-RCE\.conf',
-        'PHP': r'REQUEST-933-APPLICATION-ATTACK-PHP\.conf',
-        'NODEJS': r'REQUEST-934-APPLICATION-ATTACK-NODEJS\.conf',
-        'JAVA': r'REQUEST-944-APPLICATION-ATTACK-JAVA\.conf',
-        'SCANNER': r'REQUEST-913-SCANNER-DETECTION\.conf',
+        'XSS': r'REQUEST-941-APPLICATION-ATTACK-XSS',
+        'SQLI': r'REQUEST-942-APPLICATION-ATTACK-SQLI', 
+        'LFI': r'REQUEST-930-APPLICATION-ATTACK-LFI',
+        'RFI': r'REQUEST-931-APPLICATION-ATTACK-RFI',
+        'RCE': r'REQUEST-932-APPLICATION-ATTACK-RCE',
+        'PHP': r'REQUEST-933-APPLICATION-ATTACK-PHP',
+        'NODEJS': r'REQUEST-934-APPLICATION-ATTACK-NODEJS',
+        'JAVA': r'REQUEST-944-APPLICATION-ATTACK-JAVA',
+        'SCANNER': r'REQUEST-913-SCANNER-DETECTION',
         'SESSION': r'REQUEST-943-APPLICATION-ATTACK-SESSION',
-        'PROTOCOL': r'REQUEST-920-PROTOCOL-ENFORCEMENT\.conf',
-        'MULTIPART': r'REQUEST-922-MULTIPART-ATTACK\.conf',
-        'XML': r'REQUEST-923-REQUEST-DATA'
+        'PROTOCOL': r'REQUEST-920-PROTOCOL-ENFORCEMENT',
+        'MULTIPART': r'REQUEST-922-MULTIPART-ATTACK',
+        'XML': r'REQUEST-923-REQUEST-DATA',
+        'XXE': r'REQUEST-912-DOS-PROTECTION'
     }
     
     # Generic attack pattern - matches REQUEST-XXX-*-ATTACK-* format
@@ -31,6 +32,13 @@ class AttackDetectionEngine:
     
     # Blocking evaluation rule ID
     BLOCKING_RULE_ID = "949110"
+    
+    # Custom rule patterns (for extensibility)
+    CUSTOM_ATTACK_PATTERNS = [
+        r'CUSTOM-\d+.*-ATTACK-',  # Custom attack rules
+        r'LOCAL-\d+.*-ATTACK-',    # Local attack rules
+        r'SITE-\d+.*-ATTACK-'      # Site-specific attack rules
+    ]
     
     @classmethod
     def analyze_log_entry(cls, log_json: dict) -> Dict:
@@ -180,16 +188,20 @@ class AttackDetectionEngine:
         # Note: 403 status alone doesn't confirm attack (could be legitimate access denial)
         # Note: Anomaly score alone doesn't confirm attack (could be cumulative from minor issues)
         # Improved attack detection logic:
-        # Only consider it an attack if:
-        # 1. There are actual rule violations (not just scoring/evaluation rules)
-        # 2. Attack types were successfully identified from rule patterns
-        is_attack = has_actual_violations and len(attack_types) > 0
+        # Consider it an attack if:
+        # 1. Attack types were successfully identified from rule patterns
+        # 2. OR has actual violations with anomaly score >= 5
+        # 3. OR has actual violations even without identified types (fallback)
+        is_attack = (len(attack_types) > 0) or (has_actual_violations and anomaly_score >= 5) or has_actual_violations
         
         # Log detection details for debugging
         if len(messages) > 0:
             logging.info(f"Attack detection: violations={has_actual_violations}, "
                        f"types={attack_types}, score={anomaly_score}, "
                        f"is_attack={is_attack}")
+            # Log rule files for debugging if no attack types detected
+            if has_actual_violations and len(attack_types) == 0:
+                logging.warning(f"Attack violations detected but no types identified. Rule files: {rule_files[:3]}")
         
         return {
             'attack_types': list(attack_types),
@@ -220,19 +232,48 @@ class AttackDetectionEngine:
         
         # Check if there are actual attack rules (not just scoring)
         has_attack_violations = False
+        attack_rules = []
         EVALUATION_RULES = {"949110", "949111", "980130", "980140", "980170"}
         
         for msg in messages:
             rule_file = msg.get("details", {}).get("file", "")
             rule_id = msg.get("details", {}).get("ruleId")
+            severity = msg.get("details", {}).get("severity", "0")
             
             # Skip scoring and informational rules
             if rule_id and rule_id not in EVALUATION_RULES:
-                if rule_file and ('ATTACK' in rule_file.upper() or 
-                                'SCANNER' in rule_file.upper() or
-                                'PROTOCOL' in rule_file.upper()):
+                # Check standard OWASP CRS attack patterns
+                if rule_file and re.search(r'REQUEST-\d+.*-ATTACK-', rule_file):
                     has_attack_violations = True
-                    break
+                    attack_rules.append({
+                        'rule_id': rule_id,
+                        'rule_file': rule_file,
+                        'severity': severity,
+                        'message': msg.get("message", "")
+                    })
+                # Check custom attack patterns
+                elif rule_file:
+                    for pattern in cls.CUSTOM_ATTACK_PATTERNS:
+                        if re.search(pattern, rule_file):
+                            has_attack_violations = True
+                            attack_rules.append({
+                                'rule_id': rule_id,
+                                'rule_file': rule_file,
+                                'severity': severity,
+                                'message': msg.get("message", "")
+                            })
+                            break
+                # Check for other security-related rules
+                elif rule_file and ('SCANNER' in rule_file.upper() or 
+                                   'PROTOCOL' in rule_file.upper() or
+                                   'MULTIPART' in rule_file.upper()):
+                    has_attack_violations = True
+                    attack_rules.append({
+                        'rule_id': rule_id,
+                        'rule_file': rule_file,
+                        'severity': severity,
+                        'message': msg.get("message", "")
+                    })
         
         # Extract anomaly score for additional context
         anomaly_score = 0
@@ -255,39 +296,44 @@ class AttackDetectionEngine:
                 except:
                     pass
         
-        # Enhanced blocking detection logic:
+        # Improved blocking detection logic:
         # WAF blocks when:
-        # 1. Status code is 403 AND
-        # 2. Either:
-        #    a. Has blocking evaluation rule (949110) with anomaly score >= 5 (default threshold)
-        #    b. Has actual attack violations with high anomaly score
+        # 1. Has blocking evaluation rule (949110) with anomaly score >= threshold (usually 5)
+        # 2. OR has attack violations that resulted in 403 status
+        # Note: 403 alone doesn't mean attack - could be auth issues, forbidden resources, etc.
         is_blocked = False
         
-        if status_code == 403:
-            # Standard blocking: blocking rule present with sufficient anomaly score
-            if has_blocking_rule and anomaly_score >= 5:
-                is_blocked = True
-            # Alternative blocking: attack violations with high score
-            elif has_attack_violations and anomaly_score >= 5:
-                is_blocked = True
+        # Primary detection: Blocking rule with sufficient anomaly score (most reliable)
+        if has_blocking_rule and anomaly_score >= 5:
+            is_blocked = True
+            logging.info(f"Request BLOCKED by ModSecurity: Blocking rule triggered with score {anomaly_score}")
+        # Secondary detection: Attack violations with 403 status
+        elif has_attack_violations and status_code == 403:
+            # Only consider it blocked if we have actual attack rules and 403
+            # This helps differentiate from regular 403 errors
+            is_blocked = True
+            logging.info(f"Request BLOCKED by ModSecurity: Attack rules triggered ({len(attack_rules)} rules) with status 403")
+        # Attack detected but not blocked (detection-only mode or below threshold)
+        elif has_attack_violations and anomaly_score > 0:
+            logging.info(f"Attack DETECTED but not blocked: score {anomaly_score}, status {status_code}, rules: {len(attack_rules)}")
         
-        # Log blocking decision for debugging
-        if len(messages) > 0:
-            logging.info(f"Blocking detection: status={status_code}, blocking_rule={has_blocking_rule}, "
+        # Detailed logging for debugging
+        if has_attack_violations or has_blocking_rule:
+            logging.debug(f"Security analysis: status={status_code}, blocking_rule={has_blocking_rule}, "
                        f"violations={has_attack_violations}, score={anomaly_score}, "
-                       f"is_blocked={is_blocked}")
+                       f"is_blocked={is_blocked}, attack_rules={[r['rule_file'] for r in attack_rules]}")
         
         return {'is_blocked': is_blocked}
     
     @classmethod
     def _classify_attack_type(cls, rule_file: str) -> Optional[str]:
         """Classify attack type based on rule file pattern"""
-        # First check specific patterns
+        # First check specific OWASP CRS patterns
         for attack_type, pattern in cls.ATTACK_RULE_PATTERNS.items():
             if re.search(pattern, rule_file):
                 return attack_type
         
-        # Check generic attack pattern (REQUEST-XXX-*-ATTACK-*)
+        # Check generic OWASP CRS attack pattern (REQUEST-XXX-*-ATTACK-*)
         if re.search(cls.GENERIC_ATTACK_PATTERN, rule_file):
             # Try to extract attack type from filename
             match = re.search(r'REQUEST-\d+.*-ATTACK-([A-Z-]+)', rule_file)
@@ -295,6 +341,16 @@ class AttackDetectionEngine:
                 attack_name = match.group(1).replace('.conf', '').replace('-', '_')
                 return attack_name
             return 'UNKNOWN_ATTACK'
+        
+        # Check custom attack patterns
+        for pattern in cls.CUSTOM_ATTACK_PATTERNS:
+            if re.search(pattern, rule_file):
+                # Extract attack type from custom rule
+                match = re.search(r'(CUSTOM|LOCAL|SITE)-\d+.*-ATTACK-([A-Z-]+)', rule_file)
+                if match:
+                    attack_name = f"CUSTOM_{match.group(2)}".replace('.conf', '').replace('-', '_')
+                    return attack_name
+                return 'CUSTOM_ATTACK'
         
         # Check if file contains ATTACK keyword
         if 'ATTACK' in rule_file.upper():

@@ -51,6 +51,15 @@ class SecurityEventRepository(ISecurityEventRepository):
             
             if filters.get("source_ip"):
                 query = query.filter(SecurityEvent.source_ip == filters["source_ip"])
+            
+            if filters.get("destination_ip"):
+                query = query.filter(SecurityEvent.destination_ip == filters["destination_ip"])
+            
+            if filters.get("domain"):
+                query = query.filter(SecurityEvent.target_website.like(f"%{filters['domain']}%"))
+            
+            if filters.get("method"):
+                query = query.filter(SecurityEvent.method == filters["method"])
         
         # Get total count
         total = query.count()

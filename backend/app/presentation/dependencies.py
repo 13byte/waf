@@ -8,11 +8,8 @@ from app.domain.repositories.user_repository import UserRepository
 from app.infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
 from app.domain.repositories.post_repository import PostRepository, CategoryRepository
 from app.infrastructure.repositories.sqlalchemy_post_repository import SQLAlchemyPostRepository, SQLAlchemyCategoryRepository
-from app.domain.repositories.waf_log_repository import WafLogRepository
-from app.infrastructure.repositories.sqlalchemy_waf_log_repository import SQLAlchemyWafLogRepository
 from app.application.services.auth_service import AuthService
 from app.application.services.post_service import PostService
-from app.application.services.monitoring_service import MonitoringService
 
 security = HTTPBearer()
 
@@ -25,9 +22,6 @@ def get_post_repository(db: Session = Depends(get_db)) -> PostRepository:
 def get_category_repository(db: Session = Depends(get_db)) -> CategoryRepository:
     return SQLAlchemyCategoryRepository(db)
 
-def get_waf_log_repository(db: Session = Depends(get_db)) -> WafLogRepository:
-    return SQLAlchemyWafLogRepository(db)
-
 def get_auth_service(user_repo: UserRepository = Depends(get_user_repository)) -> AuthService:
     return AuthService(user_repo)
 
@@ -36,10 +30,6 @@ def get_post_service(
     category_repo: CategoryRepository = Depends(get_category_repository)
 ) -> PostService:
     return PostService(post_repo, category_repo)
-
-def get_monitoring_service(waf_log_repo: WafLogRepository = Depends(get_waf_log_repository)) -> MonitoringService:
-    return MonitoringService(waf_log_repo)
-
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

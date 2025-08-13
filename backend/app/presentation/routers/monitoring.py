@@ -1,11 +1,13 @@
 # Security events monitoring endpoints
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 import json
 import asyncio
-from collections import defaultdict
+import csv
+import io
 
 from ...infrastructure.database import get_db
 from ...infrastructure.repositories.security_event_repository import SecurityEventRepository
@@ -28,6 +30,9 @@ async def get_security_events(
     blocked_only: bool = Query(False, description="Show only blocked events"),
     attacks_only: bool = Query(False, description="Show only attack events"),
     source_ip: Optional[str] = Query(None, description="Filter by source IP"),
+    destination_ip: Optional[str] = Query(None, description="Filter by destination IP"),
+    domain: Optional[str] = Query(None, description="Filter by domain/target website"),
+    method: Optional[str] = Query(None, description="Filter by HTTP method"),
     start_date: Optional[datetime] = Query(None, description="Start date"),
     end_date: Optional[datetime] = Query(None, description="End date"),
     db: Session = Depends(get_db),
@@ -49,6 +54,12 @@ async def get_security_events(
         filters["is_attack_only"] = True
     if source_ip:
         filters["source_ip"] = source_ip
+    if destination_ip:
+        filters["destination_ip"] = destination_ip
+    if domain:
+        filters["domain"] = domain
+    if method:
+        filters["method"] = method
     if start_date:
         filters["start_date"] = start_date
     if end_date:
@@ -68,6 +79,9 @@ async def get_security_events(
                 "id": e.event_id,
                 "timestamp": e.timestamp.isoformat(),
                 "source_ip": e.source_ip,
+                "source_port": e.source_port,
+                "destination_ip": e.destination_ip,
+                "destination_port": e.destination_port,
                 "target_website": e.target_website,
                 "uri": e.uri,
                 "method": e.method,
@@ -79,8 +93,10 @@ async def get_security_events(
                 "anomaly_score": e.anomaly_score,
                 "risk_score": analysis_service.calculate_risk_score(e),
                 "rules_matched": e.rules_matched or [],
+                "rule_files": e.rule_files or [],
                 "request_headers": e.request_headers,
-                "response_headers": e.response_headers
+                "response_headers": e.response_headers,
+                "user_agent": e.user_agent
             }
             for e in events
         ],
@@ -107,10 +123,28 @@ async def get_security_event(
     
     analysis_service = SecurityAnalysisService()
     
+    # Try to get raw log from WafLog table
+    raw_audit_log = None
+    try:
+        # Import WafLog model dynamically to avoid circular imports
+        from sqlalchemy import text
+        result = db.execute(
+            text("SELECT raw_log FROM waf_logs WHERE timestamp = :ts AND source_ip = :ip AND uri = :uri LIMIT 1"),
+            {"ts": event.timestamp, "ip": event.source_ip, "uri": event.uri}
+        ).first()
+        if result and result[0]:
+            raw_audit_log = result[0]
+    except Exception as e:
+        # If we can't get raw log, it's not critical
+        pass
+    
     return {
         "id": event.event_id,
         "timestamp": event.timestamp.isoformat(),
         "source_ip": event.source_ip,
+        "source_port": event.source_port,
+        "destination_ip": event.destination_ip,
+        "destination_port": event.destination_port,
         "target_website": event.target_website,
         "uri": event.uri,
         "method": event.method,
@@ -122,12 +156,14 @@ async def get_security_event(
         "anomaly_score": event.anomaly_score,
         "risk_score": analysis_service.calculate_risk_score(event),
         "rules_matched": event.rules_matched or [],
+        "rule_files": event.rule_files or [],
         "request_headers": event.request_headers,
         "request_body": event.request_body,
         "response_headers": event.response_headers,
         "response_body": event.response_body,
         "user_agent": event.user_agent,
-        "geo_location": event.geo_location
+        "geo_location": event.geo_location,
+        "raw_audit_log": raw_audit_log
     }
 
 @router.get("/by-ip/{ip}")
@@ -214,6 +250,93 @@ async def get_event_stats(
     
     return stats
 
+@router.get("/export")
+async def export_security_events(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Export all security events as CSV"""
+    repo = SecurityEventRepository(db)
+    analysis_service = SecurityAnalysisService()
+    
+    # Get all events (no pagination)
+    events, _ = await repo.get_all(skip=0, limit=100000)
+    
+    # Create CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header with more professional column names
+    writer.writerow([
+        'Date & Time',
+        'Source IP',
+        'Source Port', 
+        'Destination IP',
+        'Destination Port',
+        'Target Domain',
+        'Request Method',
+        'Request URI',
+        'Response Status',
+        'Attack Classification',
+        'Severity Level',
+        'Action Taken',
+        'Risk Score',
+        'Anomaly Score',
+        'Matched Rules',
+        'User Agent',
+        'Country'
+    ])
+    
+    # Write data rows
+    for event in events:
+        # Format timestamp
+        timestamp = event.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Format action taken
+        action = 'BLOCKED' if event.is_blocked else 'ALLOWED'
+        
+        # Format matched rules
+        rules = ', '.join(event.rules_matched) if event.rules_matched else 'N/A'
+        
+        # Get country from geo_location
+        country = 'Unknown'
+        if event.geo_location:
+            try:
+                geo = json.loads(event.geo_location) if isinstance(event.geo_location, str) else event.geo_location
+                country = geo.get('country', 'Unknown')
+            except:
+                country = 'Unknown'
+        
+        writer.writerow([
+            timestamp,
+            event.source_ip,
+            event.source_port or '',
+            event.destination_ip or '',
+            event.destination_port or '',
+            event.target_website or '',
+            event.method,
+            event.uri,
+            event.status_code,
+            event.attack_type or 'Normal',
+            event.severity or 'INFO',
+            action,
+            analysis_service.calculate_risk_score(event),
+            event.anomaly_score or 0,
+            rules,
+            event.user_agent or '',
+            country
+        ])
+    
+    # Return CSV as download
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8-sig')),  # UTF-8 with BOM for Excel
+        media_type='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename=waf-security-log-{datetime.now().strftime("%Y%m%d")}.csv'
+        }
+    )
+
 @router.websocket("/stream")
 async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     """WebSocket endpoint for real-time event streaming"""
@@ -221,43 +344,45 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     active_connections.append(websocket)
     
     try:
-        repo = SecurityEventRepository(db)
+        # Send initial connection success
+        await websocket.send_json({"type": "connected", "message": "WebSocket connected"})
         
+        # Handle incoming messages (like ping)
         while True:
-            # Send latest events every 5 seconds
-            events = await repo.get_recent_events(limit=5)
-            
-            data = {
-                "type": "events",
-                "data": [
-                    {
-                        "id": e.event_id,
-                        "timestamp": e.timestamp.isoformat(),
-                        "source_ip": e.source_ip,
-                        "attack_type": e.attack_type,
-                        "severity": e.severity,
-                        "is_blocked": e.is_blocked
-                    }
-                    for e in events
-                ]
-            }
-            
-            await websocket.send_json(data)
-            await asyncio.sleep(5)
+            message = await websocket.receive_text()
+            if message == "ping":
+                await websocket.send_text("pong")
             
     except WebSocketDisconnect:
         active_connections.remove(websocket)
+    finally:
+        if websocket in active_connections:
+            active_connections.remove(websocket)
 
 @router.post("/broadcast")
 async def broadcast_event(
-    event: Dict[str, Any],
-    current_user = Depends(get_current_user)
+    event: Dict[str, Any]
 ):
-    """Broadcast event to all connected WebSocket clients"""
-    for connection in active_connections:
-        await connection.send_json({
-            "type": "new_event",
-            "data": event
-        })
+    """Broadcast critical events to WebSocket clients (called by log processor)"""
+    # Only broadcast critical events (HIGH severity or BLOCKED)
+    if event.get("severity") == "HIGH" or event.get("is_blocked") == True:
+        # Broadcast to all connected clients
+        disconnected = []
+        for connection in active_connections:
+            try:
+                await connection.send_json({
+                    "type": "critical_event",
+                    "data": event
+                })
+            except Exception:
+                # Connection is closed, mark for removal
+                disconnected.append(connection)
+        
+        # Clean up disconnected clients
+        for conn in disconnected:
+            if conn in active_connections:
+                active_connections.remove(conn)
+        
+        return {"message": f"Critical event broadcasted to {len(active_connections)} clients"}
     
-    return {"message": f"Broadcasted to {len(active_connections)} clients"}
+    return {"message": "Event not critical, skipping broadcast"}

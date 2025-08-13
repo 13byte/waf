@@ -179,7 +179,8 @@ def parse_log_entry(log_json: dict) -> Optional[Dict[str, Any]]:
     """Parse ModSecurity log and create both legacy and new event"""
     try:
         transaction = log_json.get('transaction', {})
-        logging.debug(f"Processing transaction: {transaction.get('unique_id', 'unknown')}")
+        unique_id = transaction.get('unique_id', 'unknown')
+        logging.debug(f"Processing transaction: {unique_id}")
         
         # Use attack detection engine
         parsed_data = AttackDetectionEngine.analyze_log_entry(log_json)
@@ -187,25 +188,28 @@ def parse_log_entry(log_json: dict) -> Optional[Dict[str, Any]]:
         if not parsed_data:
             logging.warning(f"Failed to parse log entry")
             return None
+            
+        # Validate required fields
+        if not parsed_data.get('method') or not parsed_data.get('uri'):
+            logging.warning(f"Missing required fields in parsed data: method={parsed_data.get('method')}, uri={parsed_data.get('uri')}")
+            return None
         
         # Map attack types to new format
         attack_type = None
         if parsed_data.get('attack_types'):
-            # Map to single primary attack type
-            types_map = {
-                'XSS': 'XSS',
-                'SQL Injection': 'SQLI',
-                'Path Traversal': 'LFI',
-                'Command Injection': 'RCE',
-                'XXE': 'XXE',
-                'SSRF': 'SSRF'
-            }
-            for old_type in parsed_data['attack_types']:
-                if old_type in types_map:
-                    attack_type = types_map[old_type]
-                    break
-            if not attack_type and parsed_data['attack_types']:
-                attack_type = parsed_data['attack_types'][0]
+            # Map to single primary attack type - direct mapping since we use same names
+            attack_type = parsed_data['attack_types'][0]
+            logging.info(f"[{unique_id}] Attack type detected: {attack_type} from types: {parsed_data['attack_types']}")
+        elif parsed_data.get('is_attack'):
+            # If attack detected but no specific type, set generic attack type
+            anomaly_score = parsed_data.get('anomaly_score', 0)
+            if anomaly_score >= 10:
+                attack_type = 'HIGH_RISK'
+            elif anomaly_score >= 5:
+                attack_type = 'SUSPICIOUS'
+            else:
+                attack_type = 'ANOMALY'
+            logging.info(f"[{unique_id}] Generic attack detected with score {anomaly_score}, type: {attack_type}")
         
         # Extract headers
         request_headers = {}
@@ -286,12 +290,23 @@ def parse_log_entry(log_json: dict) -> Optional[Dict[str, Any]]:
         logging.error(f"Error parsing log entry: {e}")
         return None
 
-def notify_backend_new_event(event_data: dict):
-    """Notify backend API about new security event for WebSocket broadcast"""
+def notify_backend_new_events(events_data: list):
+    """Notify backend API about new security events for WebSocket broadcast"""
+    if not events_data:
+        return
+        
     try:
-        # Try to notify backend for real-time updates
         backend_url = "http://backend:8000/api/security-events/broadcast"
-        requests.post(backend_url, json=event_data, timeout=1)
+        # Send each event individually so backend can filter
+        for event in events_data:
+            try:
+                requests.post(backend_url, json=event, timeout=0.5)
+            except:
+                pass  # Don't block on individual events
+        
+        critical_count = sum(1 for e in events_data if e.get("severity") == "HIGH" or e.get("is_blocked"))
+        if critical_count > 0:
+            logging.info(f"Notified backend about {critical_count} critical events")
     except Exception as e:
         # Don't block if backend is not available
         logging.debug(f"Could not notify backend: {e}")
@@ -302,70 +317,127 @@ def process_new_logs(db, last_position):
         return last_position
 
     events_created = 0
+    events_to_commit = []  # Batch processing
+    
     with open(LOG_FILE_PATH, 'r') as f:
         f.seek(last_position)
         logging.debug(f"Seeking to position: {last_position}")
         
-        # Skip partial line if not at beginning
-        if last_position > 0:
-            f.readline()
-            logging.debug(f"Skipped partial line after seek")
+        # Don't skip lines - ModSecurity writes complete JSON lines
+        # Each line is a complete JSON object
         
-        for line in f:
+        for line_num, line in enumerate(f, 1):
             try:
+                # Skip empty lines
+                if not line.strip():
+                    continue
+                    
                 # Fix known ModSecurity JSON issues
+                original_line = line
+                # Multiple fixes for common JSON issues
                 line = line.replace('OWASP_CRS/4.17.1\\""', 'OWASP_CRS/4.17.1"')
+                line = line.replace('OWASP_CRS/4.17.1""', 'OWASP_CRS/4.17.1"')
+                # Fix escaped quotes in components array
+                line = re.sub(r'"components":\["OWASP_CRS/[^"]*\\+"*\]', '"components":["OWASP_CRS/4.17.1"]', line)
                 
                 try:
                     log_data = json.loads(line)
                 except json.JSONDecodeError as e:
-                    # Try aggressive fix
-                    logging.debug(f"JSON parse failed, attempting fix")
+                    # Try more aggressive fixes
+                    logging.debug(f"JSON parse failed at line {line_num}, attempting fix: {str(e)[:100]}")
+                    # Replace entire components array with a valid one
                     line = re.sub(r'"components":\[[^\]]*\]', '"components":["OWASP_CRS/4.17.1"]', line)
-                    log_data = json.loads(line)
+                    # Fix any remaining double quotes issues
+                    line = re.sub(r'""(?!")', '"', line)
+                    try:
+                        log_data = json.loads(line)
+                    except json.JSONDecodeError as e2:
+                        logging.error(f"Failed to parse log line {line_num} even after fix: {str(e2)[:100]}")
+                        logging.debug(f"Problematic line preview: {original_line[:200]}...")
+                        continue
                 
                 # Parse and create events
-                result = parse_log_entry(log_data)
+                result = None
+                try:
+                    result = parse_log_entry(log_data)
+                except Exception as pe:
+                    logging.error(f"Failed to parse log entry: {pe}")
+                    logging.debug(f"Transaction ID: {log_data.get('transaction', {}).get('unique_id', 'unknown')}")
+                    continue
+                    
                 if result:
-                    # Add legacy log for compatibility
-                    try:
-                        db.add(result['waf_log'])
-                        db.commit()
-                    except IntegrityError:
-                        db.rollback()
-                        logging.debug(f"Duplicate legacy log skipped")
+                    # Log the detected attack type for debugging
+                    security_event = result['security_event']
+                    if security_event.attack_type:
+                        logging.info(f"Attack detected: {security_event.attack_type} from {security_event.source_ip}")
+                    elif security_event.is_attack:
+                        logging.warning(f"Attack detected but no type identified from {security_event.source_ip}, anomaly_score: {security_event.anomaly_score}")
                     
-                    # Add new security event
-                    try:
-                        db.add(result['security_event'])
-                        db.commit()
-                        events_created += 1
-                        
-                        # Notify backend for real-time updates
-                        event = result['security_event']
-                        notify_backend_new_event({
-                            "id": event.event_id,
-                            "timestamp": event.timestamp.isoformat(),
-                            "source_ip": event.source_ip,
-                            "attack_type": event.attack_type,
-                            "severity": event.severity,
-                            "is_blocked": event.is_blocked
-                        })
-                        
-                    except IntegrityError:
-                        db.rollback()
-                        logging.debug(f"Duplicate security event skipped")
+                    # Collect events for batch processing
+                    events_to_commit.append(result)
                     
-            except json.JSONDecodeError:
-                logging.warning(f"Invalid JSON line skipped")
+            except json.JSONDecodeError as je:
+                logging.warning(f"Invalid JSON at line {line_num}: {str(je)[:100]}")
+                logging.debug(f"Line content: {line[:200]}...")
             except Exception as e:
                 db.rollback()
-                logging.error(f"Error processing log: {e}")
+                logging.error(f"Error processing log at line {line_num}: {e}")
+                logging.debug(f"Line content: {line[:200]}...")
         
         new_position = f.tell()
     
+    # Batch commit all events
+    if events_to_commit:
+        logging.info(f"Processing batch of {len(events_to_commit)} events")
+        new_events = []  # Collect for batch notification
+        
+        for result in events_to_commit:
+            try:
+                # Add legacy log
+                db.add(result['waf_log'])
+                db.flush()  # Flush but don't commit yet
+            except IntegrityError:
+                db.rollback()
+                logging.debug(f"Duplicate legacy log: {result['waf_log'].log_unique_id}")
+                db = get_db_session()  # Get new session after rollback
+                continue
+            
+            try:
+                # Add security event
+                db.add(result['security_event'])
+                db.flush()  # Flush but don't commit yet
+                events_created += 1
+                
+                # Collect event for batch notification
+                event = result['security_event']
+                new_events.append({
+                    "id": event.event_id,
+                    "timestamp": event.timestamp.isoformat(),
+                    "source_ip": event.source_ip,
+                    "attack_type": event.attack_type,
+                    "severity": event.severity,
+                    "is_blocked": event.is_blocked
+                })
+            except IntegrityError:
+                db.rollback()
+                logging.debug(f"Duplicate security event: {result['security_event'].event_id}")
+                db = get_db_session()  # Get new session after rollback
+                continue
+        
+        # Commit all at once
+        try:
+            db.commit()
+            logging.info(f"Successfully committed {events_created} events")
+            
+            # Send batch notification after successful commit
+            if new_events:
+                notify_backend_new_events(new_events)
+        except Exception as e:
+            db.rollback()
+            logging.error(f"Failed to commit batch: {e}")
+    
     if events_created > 0:
-        logging.info(f"Created {events_created} new security events")
+        logging.info(f"Created {events_created} new security events total")
     
     # Save position
     with open(STATE_FILE_PATH, 'w') as f:
@@ -398,25 +470,39 @@ def main():
     logging.info("Starting log processor service.")
     db_session_factory = get_db_session
     
-    # Initial check in case logs were written before service start
-    db = db_session_factory()
-    try:
-        handler = LogFileHandler(db_session_factory)
-        handler.last_position = process_new_logs(db, handler.load_state())
-    finally:
-        db.close()
-
-    observer = Observer()
-    observer.schedule(handler, path=os.path.dirname(LOG_FILE_PATH), recursive=False)
-    observer.start()
-    logging.info(f"Watching for changes in {LOG_FILE_PATH}")
-
-    try:
-        while True:
-            time.sleep(10)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
+    # Load last position
+    last_position = 0
+    if os.path.exists(STATE_FILE_PATH):
+        with open(STATE_FILE_PATH, 'r') as f:
+            try:
+                last_position = int(f.read().strip())
+            except:
+                last_position = 0
+    
+    logging.info(f"Starting from position: {last_position}")
+    
+    # Use polling approach for Docker compatibility
+    while True:
+        try:
+            db = db_session_factory()
+            try:
+                # Check if log file has new content
+                if os.path.exists(LOG_FILE_PATH):
+                    current_size = os.path.getsize(LOG_FILE_PATH)
+                    if current_size > last_position:
+                        logging.info(f"New log content detected: {current_size} bytes (was {last_position}), processing {current_size - last_position} new bytes")
+                        last_position = process_new_logs(db, last_position)
+                    elif current_size < last_position:
+                        # Log file was rotated or truncated
+                        logging.warning(f"Log file size decreased from {last_position} to {current_size}, resetting position to 0")
+                        last_position = 0
+            finally:
+                db.close()
+        except Exception as e:
+            logging.error(f"Error in main loop: {e}")
+        
+        # Poll every 0.5 seconds for faster detection
+        time.sleep(0.5)
 
 if __name__ == "__main__":
     main()

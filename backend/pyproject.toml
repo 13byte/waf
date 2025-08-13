@@ -20,6 +20,7 @@ dependencies = [
   "python-dotenv",
   "websockets",
   "httpx",
+  "geoip2",
 ]
 
 [project.optional-dependencies]

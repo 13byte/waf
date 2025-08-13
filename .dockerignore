@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test
+test/
+tests/
+coverage/
+*.test.*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Dependencies (should be installed in container)
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Environment
+.env
+.env.*
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+tmp/
+
+# Data (should be mounted as volumes)
+data/
+*.db
+*.sqlite

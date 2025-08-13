@@ -9,10 +9,6 @@ import {
   Settings,
   BarChart3,
   Menu,
-  X,
-  Moon,
-  Sun,
-  Bell,
   User,
   LogOut,
   ChevronRight
@@ -25,12 +21,15 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+import { ThemeToggle } from '../../components/ThemeToggle';
+import { NotificationBell } from '../../components/NotificationBell';
+
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { state, logout } = useAuth();
+  const user = state.user;
 
   const navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
@@ -43,7 +42,7 @@ export const MainLayout: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
+    <div className="min-h-screen">
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         {/* Sidebar */}
         <aside
@@ -122,22 +121,10 @@ export const MainLayout: React.FC = () => {
 
             <div className="flex items-center space-x-4">
               {/* Theme toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                {darkMode ? (
-                  <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                )}
-              </button>
+              <ThemeToggle />
 
               {/* Notifications */}
-              <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 relative">
-                <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationBell />
 
               {/* Logout */}
               <button 

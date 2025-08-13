@@ -15,6 +15,7 @@ import { GetDashboardDataUseCase, DashboardData } from '../../application/use-ca
 import { SecurityEventRepository } from '../../infrastructure/repositories/SecurityEventRepository';
 import { SecurityAnalysisService } from '../../domain/services/SecurityAnalysisService';
 import { ApiClient } from '../../infrastructure/api/ApiClient';
+import { TimeRange } from '../../domain/value-objects/TimeRange';
 
 export const DashboardPage: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -51,7 +52,7 @@ export const DashboardPage: React.FC = () => {
 
       // Load data
       const dashboardData = await getDashboardDataUseCase.execute(
-        { startDate, endDate: now }
+        new TimeRange(startDate, now)
       );
       
       setData(dashboardData);

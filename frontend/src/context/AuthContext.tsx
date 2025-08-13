@@ -5,6 +5,7 @@ import { apiClient } from '../utils/api';
 interface AuthState {
   user: User | null;
   isLoading: boolean;
+  isInitialized: boolean;  // Track if initial auth check is done
   error: string | null;
 }
 
@@ -13,11 +14,26 @@ type AuthAction =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_INITIALIZED' }
   | { type: 'LOGOUT' };
 
+// Load initial user from localStorage
+const getInitialUser = (): User | null => {
+  try {
+    const savedUser = localStorage.getItem('user_info');
+    if (savedUser) {
+      return JSON.parse(savedUser);
+    }
+  } catch (e) {
+    console.error('Failed to parse saved user info:', e);
+  }
+  return null;
+};
+
 const initialState: AuthState = {
-  user: null,
-  isLoading: false,
+  user: getInitialUser(),  // Load initial value from localStorage
+  isLoading: true,  // Start with loading state
+  isInitialized: false,
   error: null,
 };
 
@@ -31,6 +47,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
       return { ...state, error: null };
+    case 'SET_INITIALIZED':
+      return { ...state, isInitialized: true, isLoading: false };
     case 'LOGOUT':
       return { ...state, user: null };
     default:
@@ -60,28 +78,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      
+      if (!token) {
+        // No token, mark as initialized and not loading
+        dispatch({ type: 'SET_INITIALIZED' });
+        return;
+      }
 
+      // Set token for API calls
       apiClient.setToken(token);
-      dispatch({ type: 'SET_LOADING', payload: true });
-
+      
       try {
+        // Try to get current user from API
         const response = await apiClient.getCurrentUser();
         
         if (response.data) {
           dispatch({ type: 'SET_USER', payload: response.data });
-        } else {
-          localStorage.removeItem('auth_token');
-          apiClient.setToken(null);
+          // Update saved user info
+          localStorage.setItem('user_info', JSON.stringify(response.data));
+        } else if (response.error) {
+          // Check if it's an auth error
+          if (response.error.includes('401') || response.error.includes('403') || 
+              response.error.includes('Unauthorized') || response.error.includes('Invalid')) {
+            // Clear invalid token
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_info');
+            apiClient.setToken(null);
+            dispatch({ type: 'SET_USER', payload: null });
+          }
+          // For other errors, keep the user from localStorage (already loaded in initialState)
         }
       } catch (error) {
-        // Token might be invalid or expired
-        localStorage.removeItem('auth_token');
-        apiClient.setToken(null);
-        console.error('Auth initialization failed:', error);
+        // Network error - keep user from localStorage
+        console.error('Auth check failed (network error):', error);
       }
       
-      dispatch({ type: 'SET_LOADING', payload: false });
+      // Mark as initialized
+      dispatch({ type: 'SET_INITIALIZED' });
     };
 
     initAuth();
@@ -102,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (userResponse.data) {
         dispatch({ type: 'SET_USER', payload: userResponse.data });
+        // Save user info to localStorage
+        localStorage.setItem('user_info', JSON.stringify(userResponse.data));
         dispatch({ type: 'SET_LOADING', payload: false });
         return { success: true };
       }
@@ -132,6 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_info');
     apiClient.setToken(null);
     dispatch({ type: 'LOGOUT' });
   };

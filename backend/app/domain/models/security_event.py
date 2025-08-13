@@ -35,14 +35,15 @@ class SecurityEvent(Base):
     # Network info
     source_ip = Column(String(50), nullable=False, index=True)
     source_port = Column(Integer)
-    dest_ip = Column(String(50))
-    dest_port = Column(Integer)
+    destination_ip = Column(String(50))
+    destination_port = Column(Integer)
     
     # Request info
     method = Column(String(10), nullable=False)
     uri = Column(String(2048), nullable=False)
     target_website = Column(String(255), index=True)
     status_code = Column(Integer, nullable=False, index=True)
+    user_agent = Column(String(1024))
     
     # Security analysis
     attack_type = Column(String(50), index=True)
@@ -52,19 +53,20 @@ class SecurityEvent(Base):
     
     # Scores
     anomaly_score = Column(Integer, default=0)
-    severity_score = Column(Integer, default=0)
     risk_score = Column(Float, default=0.0)
     
     # Rule info
-    rule_ids = Column(JSON)
+    rules_matched = Column(JSON)
     rule_files = Column(JSON)
     
-    # Raw data
-    raw_log = Column(JSON)
+    # Request/Response data
+    request_headers = Column(JSON)
+    request_body = Column(String(4096))
+    response_headers = Column(JSON)
+    response_body = Column(String(4096))
     
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Geo location
+    geo_location = Column(JSON)
     
     # Indexes for better performance
     __table_args__ = (

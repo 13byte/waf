@@ -17,7 +17,14 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
-    historyApiFallback: true
+    proxy: {
+      '/api': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: true
+      }
+    }
   },
   preview: {
     host: '0.0.0.0',

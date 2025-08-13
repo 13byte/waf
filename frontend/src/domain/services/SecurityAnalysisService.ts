@@ -1,5 +1,5 @@
 // Security analysis domain service
-import { SecurityEvent, AttackType, SeverityLevel } from '../entities/SecurityEvent';
+import { SecurityEvent, SecurityEventEntity, AttackType, SeverityLevel } from '../entities/SecurityEvent';
 import { IpAddress } from '../value-objects/IpAddress';
 import { TimeRange } from '../value-objects/TimeRange';
 
@@ -17,6 +17,24 @@ export interface AttackPattern {
 }
 
 export class SecurityAnalysisService {
+  // Helper functions for SecurityEvent interface
+  private isAttack(event: SecurityEvent): boolean {
+    return event.attackType !== undefined;
+  }
+
+  private isCritical(event: SecurityEvent): boolean {
+    return event.severity === SeverityLevel.CRITICAL;
+  }
+
+  private getSeverityScore(event: SecurityEvent): number {
+    const scores = {
+      [SeverityLevel.LOW]: 1,
+      [SeverityLevel.MEDIUM]: 2,
+      [SeverityLevel.HIGH]: 3,
+      [SeverityLevel.CRITICAL]: 4
+    };
+    return scores[event.severity];
+  }
   
   analyzeThreatLevel(events: SecurityEvent[]): ThreatLevel {
     if (events.length === 0) {
@@ -27,7 +45,7 @@ export class SecurityAnalysisService {
     let score = 0;
 
     // Check attack frequency
-    const attackCount = events.filter(e => e.isAttack()).length;
+    const attackCount = events.filter(e => this.isAttack(e)).length;
     const attackRate = attackCount / events.length;
     
     if (attackRate > 0.5) {
@@ -39,7 +57,7 @@ export class SecurityAnalysisService {
     }
 
     // Check critical events
-    const criticalCount = events.filter(e => e.isCritical()).length;
+    const criticalCount = events.filter(e => this.isCritical(e)).length;
     if (criticalCount > 0) {
       score += criticalCount * 10;
       reasons.push(`${criticalCount} critical events detected`);
@@ -121,7 +139,7 @@ export class SecurityAnalysisService {
       const stats = ipStats.get(event.sourceIp)!;
       stats.totalCount++;
       
-      if (event.isAttack()) {
+      if (this.isAttack(event)) {
         stats.attackCount++;
         if (event.attackType) {
           stats.attackTypes.add(event.attackType);
@@ -169,9 +187,9 @@ export class SecurityAnalysisService {
     let totalScore = 0;
     
     events.forEach(event => {
-      let eventScore = event.getSeverityScore() * 10;
+      let eventScore = this.getSeverityScore(event) * 10;
       
-      if (event.isAttack()) eventScore *= 1.5;
+      if (this.isAttack(event)) eventScore *= 1.5;
       if (event.blocked) eventScore *= 0.7; // Lower risk if blocked
       
       totalScore += eventScore;
