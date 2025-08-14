@@ -18,70 +18,7 @@ class User(Base):
     created_at = Column(TIMESTAMP, default=func.now())
     updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, default=True)
-    posts = relationship("Post", back_populates="author")
-    comments = relationship("Comment", back_populates="author")
-    files = relationship("File", back_populates="uploader")
     sessions = relationship("UserSession", back_populates="user")
-
-class Category(Base):
-    __tablename__ = "categories"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
-    description = Column(Text)
-    created_at = Column(TIMESTAMP, default=func.now())
-    is_active = Column(Boolean, default=True)
-    posts = relationship("Post", back_populates="category")
-
-class Post(Base):
-    __tablename__ = "posts"
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    content = Column(Text, nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
-    view_count = Column(Integer, default=0)
-    like_count = Column(Integer, default=0)
-    image_url = Column(String(255))
-    created_at = Column(TIMESTAMP, default=func.now())
-    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
-    is_published = Column(Boolean, default=True)
-    author = relationship("User", back_populates="posts")
-    category = relationship("Category", back_populates="posts")
-    comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
-    files = relationship("File", back_populates="post")
-
-class Comment(Base):
-    __tablename__ = "comments"
-    id = Column(Integer, primary_key=True, index=True)
-    content = Column(Text, nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
-    like_count = Column(Integer, default=0)
-    created_at = Column(TIMESTAMP, default=func.now())
-    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
-    is_active = Column(Boolean, default=True)
-    post = relationship("Post", back_populates="comments")
-    author = relationship("User", back_populates="comments")
-    parent = relationship("Comment", remote_side=[id], back_populates="replies")
-    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
-
-class File(Base):
-    __tablename__ = "files"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String(255), nullable=False)
-    original_filename = Column(String(255), nullable=False)
-    filepath = Column(String(500), nullable=False)
-    filesize = Column(BigInteger, nullable=False)
-    mimetype = Column(String(100), nullable=False)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    upload_time = Column(TIMESTAMP, default=func.current_timestamp())
-    is_active = Column(Boolean, default=True)
-    
-    post = relationship("Post", back_populates="files")
-    uploader = relationship("User", back_populates="files")
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
@@ -111,12 +48,53 @@ class AuditLog(Base):
     user_agent = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, default=func.current_timestamp())
 
-class PostView(Base):
-    __tablename__ = "post_views"
+class WafLog(Base):
+    __tablename__ = "waf_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(Text, nullable=True)
-    viewed_at = Column(TIMESTAMP, default=func.current_timestamp())
+    unique_id = Column(String(255), unique=True, nullable=False)
+    timestamp = Column(DateTime, nullable=False)
+    source_ip = Column(String(45), nullable=False)
+    host = Column(String(255))
+    uri = Column(Text)
+    method = Column(String(10))
+    status_code = Column(Integer)
+    matched_rules = Column(JSON)
+    action = Column(String(50))
+    raw_log = Column(Text)
+    created_at = Column(TIMESTAMP, default=func.now())
+
+class SecurityEvent(Base):
+    __tablename__ = "security_events"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, nullable=False)
+    source_ip = Column(String(45), nullable=False)
+    destination_ip = Column(String(45))
+    attack_type = Column(String(100))
+    severity = Column(String(20))
+    domain = Column(String(255))
+    uri = Column(Text)
+    method = Column(String(10))
+    status_code = Column(Integer)
+    payload = Column(Text)
+    user_agent = Column(Text)
+    blocked = Column(Boolean, default=False)
+    risk_score = Column(Integer)
+    rule_ids = Column(JSON)
+    message = Column(Text)
+    raw_event = Column(JSON)
+    created_at = Column(TIMESTAMP, default=func.now())
+
+class WafConfig(Base):
+    __tablename__ = "waf_config"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    paranoia_level = Column(Integer, default=1)
+    rule_engine = Column(Boolean, default=True)
+    audit_engine = Column(Boolean, default=True)
+    anomaly_threshold = Column(Integer, default=5)
+    blocked_ips = Column(JSON)
+    custom_rules = Column(JSON)
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+    updated_by = Column(Integer, ForeignKey("users.id"))

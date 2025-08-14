@@ -6,10 +6,10 @@ import ErrorBoundary from '@components/ErrorBoundary';
 import { ProtectedRoute } from '@components/ProtectedRoute';
 
 // Layout
-import { MainLayout } from './presentation/layouts/MainLayout';
+import MainLayout from './presentation/layouts/MainLayout';
 
 // Pages
-import { DashboardPage } from './presentation/pages/DashboardPage';
+import DashboardPage from './presentation/pages/DashboardPage';
 import { SecurityEventsPage } from './presentation/pages/SecurityEventsPage';
 import AttackLabPage from './presentation/pages/AttackLabPage';
 import AnalyticsPage from './presentation/pages/AnalyticsPage';

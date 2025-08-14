@@ -6,30 +6,15 @@ from app.infrastructure.auth.auth import verify_token
 from app.domain.models.models import User
 from app.domain.repositories.user_repository import UserRepository
 from app.infrastructure.repositories.sqlalchemy_user_repository import SQLAlchemyUserRepository
-from app.domain.repositories.post_repository import PostRepository, CategoryRepository
-from app.infrastructure.repositories.sqlalchemy_post_repository import SQLAlchemyPostRepository, SQLAlchemyCategoryRepository
 from app.application.services.auth_service import AuthService
-from app.application.services.post_service import PostService
 
 security = HTTPBearer()
 
 def get_user_repository(db: Session = Depends(get_db)) -> UserRepository:
     return SQLAlchemyUserRepository(db)
 
-def get_post_repository(db: Session = Depends(get_db)) -> PostRepository:
-    return SQLAlchemyPostRepository(db)
-
-def get_category_repository(db: Session = Depends(get_db)) -> CategoryRepository:
-    return SQLAlchemyCategoryRepository(db)
-
 def get_auth_service(user_repo: UserRepository = Depends(get_user_repository)) -> AuthService:
     return AuthService(user_repo)
-
-def get_post_service(
-    post_repo: PostRepository = Depends(get_post_repository),
-    category_repo: CategoryRepository = Depends(get_category_repository)
-) -> PostService:
-    return PostService(post_repo, category_repo)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),

@@ -6,14 +6,14 @@ from fastapi.responses import JSONResponse
 from app.infrastructure.config import settings
 from app.presentation.routers import (
     auth, 
-    posts, 
     vulnerable, 
     monitoring,
     dashboard,
     waf_config,
     websocket,
     stats,
-    geoip
+    geoip,
+    analytics
 )
 import os
 import asyncio
@@ -57,16 +57,16 @@ app.add_middleware(
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
-# API Routers
-app.include_router(auth.router, prefix="/api")
-app.include_router(posts.router, prefix="/api")
-app.include_router(vulnerable.router, prefix="/api")
-app.include_router(monitoring.router)  # Has its own prefix
-app.include_router(dashboard.router)   # Has its own prefix
-app.include_router(waf_config.router)  # Has its own prefix
-app.include_router(websocket.router, prefix="/api")  # WebSocket routes
-app.include_router(stats.router)  # Has its own prefix /api/monitoring
-app.include_router(geoip.router)  # Has its own prefix /api/geoip
+# API Routers - all routers define their own prefixes internally
+app.include_router(auth.router, prefix="/api")  # /api/auth
+app.include_router(vulnerable.router, prefix="/api")  # /api/vulnerable
+app.include_router(monitoring.router)  # /api/security-events
+app.include_router(dashboard.router)   # /api/dashboard
+app.include_router(waf_config.router)  # /api/waf/config
+app.include_router(websocket.router, prefix="/api")  # /api/ws
+app.include_router(stats.router)  # /api/monitoring
+app.include_router(geoip.router)  # /api/geoip
+app.include_router(analytics.router)  # /api/analytics
 
 
 @app.get("/")

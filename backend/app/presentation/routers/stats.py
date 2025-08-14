@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, Integer
 
 from ...infrastructure.database import get_db
 from ...domain.models.security_event import SecurityEvent
@@ -113,7 +113,7 @@ async def get_monitoring_stats(
     ip_stats = db.query(
         SecurityEvent.source_ip,
         func.count(SecurityEvent.id).label('total_count'),
-        func.sum(func.cast(SecurityEvent.is_attack, db.Integer)).label('attack_count')
+        func.sum(func.cast(SecurityEvent.is_attack, Integer)).label('attack_count')
     ).filter(
         SecurityEvent.timestamp >= start_date,
         SecurityEvent.timestamp <= end_date

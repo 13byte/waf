@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from ...infrastructure.timezone import get_kst_now
 
 from ...infrastructure.database import get_db
 from ...domain.models.waf_config import WafConfig, CustomRule
@@ -74,7 +75,7 @@ async def update_waf_config(
     if anomaly_threshold is not None:
         config.anomaly_threshold = anomaly_threshold
     
-    config.updated_at = datetime.utcnow()
+    config.updated_at = get_kst_now()
     config.updated_by = current_user.username
     
     db.commit()
@@ -108,7 +109,7 @@ async def add_blocked_ip(
     if ip not in blocked_ips:
         blocked_ips.append(ip)
         config.blocked_ips = blocked_ips
-        config.updated_at = datetime.utcnow()
+        config.updated_at = get_kst_now()
         config.updated_by = current_user.username
         db.commit()
     
@@ -132,7 +133,7 @@ async def remove_blocked_ip(
     if ip in blocked_ips:
         blocked_ips.remove(ip)
         config.blocked_ips = blocked_ips
-        config.updated_at = datetime.utcnow()
+        config.updated_at = get_kst_now()
         config.updated_by = current_user.username
         db.commit()
     

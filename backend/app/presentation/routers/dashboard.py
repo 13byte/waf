@@ -1,6 +1,7 @@
 # Dashboard API endpoints
 from fastapi import APIRouter, Depends, Query
 from datetime import datetime, timedelta
+from ...infrastructure.timezone import get_kst_now
 from typing import Optional
 from sqlalchemy.orm import Session
 
@@ -19,7 +20,7 @@ async def get_dashboard_stats(
 ):
     """Get dashboard statistics"""
     # Calculate date range
-    end_date = datetime.utcnow()
+    end_date = get_kst_now()
     if time_range == "24h":
         start_date = end_date - timedelta(hours=24)
     elif time_range == "7d":
@@ -90,7 +91,7 @@ async def get_attack_patterns(
 ):
     """Get attack pattern analysis"""
     # Calculate date range
-    end_date = datetime.utcnow()
+    end_date = get_kst_now()
     if time_range == "24h":
         start_date = end_date - timedelta(hours=24)
     elif time_range == "7d":
@@ -113,7 +114,7 @@ async def get_suspicious_ips(
 ):
     """Get suspicious IP addresses"""
     # Calculate date range
-    end_date = datetime.utcnow()
+    end_date = get_kst_now()
     if time_range == "24h":
         start_date = end_date - timedelta(hours=24)
     elif time_range == "7d":

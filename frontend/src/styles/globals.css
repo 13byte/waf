@@ -1,0 +1,342 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Modern Clean Design System - Based on HTML Preview */
+@layer base {
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Default font and typography - Apple system fonts */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    @apply text-gray-900 bg-gray-50 dark:text-gray-100 dark:bg-gray-50;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Modern selection colors */
+  ::selection {
+    @apply bg-primary/20 text-primary-dark;
+  }
+
+  /* Remove focus outlines and add custom ones */
+  *:focus {
+    outline: none;
+  }
+
+  *:focus-visible {
+    @apply ring-2 ring-primary/20 ring-offset-2;
+  }
+}
+
+@layer components {
+  /* Clean modern cards - No glass effects */
+  .card {
+    @apply bg-white dark:bg-gray-100 rounded-2xl p-6 transition-all duration-200;
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.05),
+      0 4px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.05),
+      0 4px 8px rgba(0, 0, 0, 0.08),
+      0 12px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .card {
+      @apply bg-gray-100;
+      box-shadow: 
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  /* Metric Cards - Clean design with hover effects */
+  .metric-card {
+    @apply bg-white dark:bg-gray-100 rounded-xl p-6 border border-gray-200 dark:border-gray-300 transition-all duration-200 relative overflow-hidden;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0071E3 0%, #64B5F6 100%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .metric-card:hover::before {
+    opacity: 1;
+  }
+
+  .metric-card:hover {
+    @apply border-primary;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 113, 227, 0.1);
+  }
+
+  /* Clean modern button styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-sm font-medium rounded-lg border-none cursor-pointer transition-all duration-200 relative overflow-hidden;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white;
+  }
+
+  .btn-primary:hover {
+    @apply bg-primary-dark;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-100 dark:bg-gray-200 text-gray-700 dark:text-gray-600 border border-gray-200 dark:border-gray-300;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-gray-200 dark:bg-gray-300 border-gray-300 dark:border-gray-400;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-700 dark:text-gray-600;
+  }
+
+  .btn-ghost:hover {
+    @apply bg-gray-100 dark:bg-gray-200;
+  }
+
+  /* Form elements - Clean design */
+  .input-field {
+    @apply w-full px-3 py-2 bg-white dark:bg-gray-100 border border-gray-200 dark:border-gray-300 rounded-lg text-gray-900 dark:text-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors;
+  }
+
+  /* Badge styles - Matching HTML preview */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold;
+  }
+
+  .badge-critical {
+    @apply badge;
+    background: rgba(255, 69, 58, 0.1);
+    color: #FF453A;
+  }
+
+  .badge-warning {
+    @apply badge;
+    background: rgba(255, 214, 10, 0.1);
+    color: #F57C00;
+  }
+
+  .badge-info {
+    @apply badge;
+    background: rgba(10, 132, 255, 0.1);
+    color: #0A84FF;
+  }
+
+  .badge-success {
+    @apply badge;
+    background: rgba(48, 209, 88, 0.1);
+    color: #30D158;
+  }
+
+  .badge-danger {
+    @apply badge;
+    background: rgba(255, 69, 58, 0.1);
+    color: #FF453A;
+  }
+
+  /* Tab styles - Matching HTML preview */
+  .tabs {
+    @apply flex gap-0.5 bg-gray-100 dark:bg-gray-200 p-0.5 rounded-lg w-fit;
+  }
+
+  .tab {
+    @apply px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-500 bg-transparent border-none cursor-pointer transition-all duration-200;
+  }
+
+  .tab:hover {
+    @apply text-gray-800 dark:text-gray-700;
+  }
+
+  .tab.active {
+    @apply bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-800;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Event Cards - Matching HTML preview */
+  .event-card {
+    @apply bg-white dark:bg-gray-100 border border-gray-200 dark:border-gray-300 rounded-xl p-4 transition-all duration-200 cursor-pointer;
+  }
+
+  .event-card:hover {
+    @apply border-primary;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.08);
+  }
+
+  /* Toggle switch - Matching HTML preview */
+  .toggle {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    @apply bg-gray-300 dark:bg-gray-400 rounded-full cursor-pointer transition-colors duration-300;
+  }
+
+  .toggle.active {
+    @apply bg-green-500;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    @apply bg-white rounded-full transition-transform duration-300;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .toggle.active .toggle-slider {
+    transform: translateX(20px);
+  }
+
+  /* Stats grid - Matching HTML preview */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1px;
+    @apply bg-gray-200 dark:bg-gray-300 rounded-xl overflow-hidden;
+  }
+
+  .stat-item {
+    @apply bg-white dark:bg-gray-100 p-5 text-center;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    @apply text-gray-900 dark:text-gray-800 mb-1;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    @apply text-gray-500 dark:text-gray-600;
+  }
+}
+
+@layer utilities {
+  /* Mesh gradient background - Matching HTML preview */
+  .mesh-gradient {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+    opacity: 0.4;
+    background-image: 
+      radial-gradient(at 20% 30%, #E3F2FD 0px, transparent 50%),
+      radial-gradient(at 80% 20%, #F3E5F5 0px, transparent 50%),
+      radial-gradient(at 60% 70%, #E8F5E9 0px, transparent 50%),
+      radial-gradient(at 30% 80%, #FFF3E0 0px, transparent 50%);
+    filter: blur(100px);
+    animation: meshMove 20s ease-in-out infinite;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .mesh-gradient {
+      opacity: 0.1;
+      background-image: 
+        radial-gradient(at 20% 30%, #0071E3 0px, transparent 50%),
+        radial-gradient(at 80% 20%, #30D158 0px, transparent 50%),
+        radial-gradient(at 60% 70%, #FF453A 0px, transparent 50%),
+        radial-gradient(at 30% 80%, #FFD60A 0px, transparent 50%);
+    }
+  }
+
+  @keyframes meshMove {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(-20px, -20px) rotate(1deg); }
+    66% { transform: translate(20px, -10px) rotate(-1deg); }
+  }
+
+  /* Typography - Matching HTML preview */
+  .page-title {
+    font-size: 56px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #24292E 0%, #586069 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .page-title {
+      background: linear-gradient(135deg, #F6F8FA 0%, #959DA5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  .section-title {
+    font-size: 32px;
+    font-weight: 600;
+    @apply text-gray-800 dark:text-gray-200;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+
+  /* Animation utilities */
+  .animate-slide-in {
+    animation: slideIn 0.2s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Responsive utilities */
+  @media (max-width: 640px) {
+    .card {
+      @apply p-4;
+    }
+
+    .btn {
+      @apply text-xs px-3 py-2;
+    }
+
+    .page-title {
+      font-size: 32px;
+    }
+
+    .section-title {
+      font-size: 24px;
+    }
+  }
+}

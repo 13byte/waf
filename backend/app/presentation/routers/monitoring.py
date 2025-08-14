@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta
+from ...infrastructure.timezone import get_kst_now
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 import json
@@ -230,7 +231,7 @@ async def get_event_stats(
         return cached
     
     # Calculate date range
-    end_date = datetime.utcnow()
+    end_date = get_kst_now()
     if time_range == "1h":
         start_date = end_date - timedelta(hours=1)
     elif time_range == "24h":
@@ -333,7 +334,7 @@ async def export_security_events(
         io.BytesIO(output.getvalue().encode('utf-8-sig')),  # UTF-8 with BOM for Excel
         media_type='text/csv',
         headers={
-            'Content-Disposition': f'attachment; filename=waf-security-log-{datetime.now().strftime("%Y%m%d")}.csv'
+            'Content-Disposition': f'attachment; filename=waf-security-log-{get_kst_now().strftime("%Y%m%d")}.csv'
         }
     )
 

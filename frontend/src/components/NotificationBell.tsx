@@ -1,16 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, Shield, X, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-interface Notification {
-  id: string;
-  type: 'attack' | 'blocked' | 'critical';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  eventId?: string;
-}
+import type { Notification } from '../types';
 
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -164,7 +155,7 @@ export function NotificationBell() {
       </button>
 
       {dropdownOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-96 overflow-hidden flex flex-col">
+        <div className="absolute right-0 mt-2 w-80 glass-card z-50 max-h-96 overflow-hidden flex flex-col">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <div className="flex items-center space-x-2">

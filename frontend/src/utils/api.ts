@@ -1,4 +1,4 @@
-import type { LoginRequest, RegisterRequest, AuthToken, User, Post, Category, PostFormData, CommentCreateRequest, Comment, PaginatedResponse, WafLogsResponse, WafStats } from '../types';
+import type { LoginRequest, RegisterRequest, AuthToken, User, PaginatedResponse, WafLogsResponse, WafStats } from '../types';
 
 interface ApiResponse<T> {
   data?: T;
@@ -68,56 +68,6 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
-  // Posts API
-  async getPosts(params?: { skip?: number; limit?: number; category_id?: number; search?: string; }): Promise<ApiResponse<Post[]>> {
-    const searchParams = new URLSearchParams();
-    if (params?.skip !== undefined) searchParams.append('skip', params.skip.toString());
-    if (params?.limit !== undefined) searchParams.append('limit', params.limit.toString());
-    if (params?.category_id) searchParams.append('category_id', params.category_id.toString());
-    if (params?.search) searchParams.append('search', params.search);
-    const queryString = searchParams.toString() ? `?${searchParams.toString()}` : '';
-    return this.request(`/posts${queryString}`);
-  }
-
-  async getPost(id: number): Promise<ApiResponse<Post>> {
-    return this.request(`/posts/${id}`);
-  }
-
-  async createPost(postData: PostFormData): Promise<ApiResponse<Post>> {
-    const formData = new FormData();
-    formData.append('title', postData.title);
-    formData.append('content', postData.content);
-    formData.append('category_id', postData.category_id.toString());
-    if (postData.image) formData.append('image', postData.image);
-    return this.request('/posts/', { method: 'POST', body: formData });
-  }
-
-  async updatePost(id: number, postData: PostFormData): Promise<ApiResponse<Post>> {
-    const formData = new FormData();
-    formData.append('title', postData.title);
-    formData.append('content', postData.content);
-    formData.append('category_id', postData.category_id.toString());
-    if (postData.image) formData.append('image', postData.image);
-    return this.request(`/posts/${id}`, { method: 'PUT', body: formData });
-  }
-
-  async deletePost(id: number): Promise<ApiResponse<void>> {
-    return this.request(`/posts/${id}`, { method: 'DELETE' });
-  }
-
-  // Categories API
-  async getCategories(): Promise<ApiResponse<Category[]>> {
-    return this.request('/categories/');
-  }
-
-  // Comments API
-  async getComments(postId: number): Promise<ApiResponse<Comment[]>> {
-    return this.request(`/posts/${postId}/comments`);
-  }
-
-  async createComment(commentData: CommentCreateRequest): Promise<ApiResponse<Comment>> {
-    return this.request('/comments', { method: 'POST', body: JSON.stringify(commentData) });
-  }
 
   // Vulnerable endpoints for testing
   async testXSS(payload: string): Promise<ApiResponse<any>> {
@@ -225,24 +175,26 @@ class ApiClient {
     const summaryResponse = await this.request<any>('/security-events/stats/summary?time_range=' + (timeRange || '7d'));
     
     // Safely merge both responses
-    const statsData = statsResponse.data || {};
-    const summaryData = summaryResponse.data || {};
+    const statsData = statsResponse.data ?? {};
+    const summaryData = summaryResponse.data ?? {};
     
     return {
       data: {
-        // Merge summary data
-        ...(statsData.summary || {}),
-        ...(summaryData || {}),
+        // Merge summary data - spread summary first, then override with direct fields
+        total_requests: statsData.summary?.total_requests ?? summaryData.total_requests ?? 0,
+        blocked_requests: statsData.summary?.blocked_requests ?? summaryData.blocked_requests ?? 0,
+        attack_requests: statsData.summary?.attack_requests ?? summaryData.attack_requests ?? 0,
+        block_rate: statsData.summary?.block_rate ?? summaryData.block_rate ?? 0,
         // Use available attack types data
-        top_attack_types: statsData.attack_types || summaryData.top_attack_types || [],
+        top_attack_types: statsData.attack_types ?? summaryData.top_attack_types ?? [],
         // Use available IP data
-        top_source_ips: statsData.top_attacking_ips || summaryData.top_source_ips || [],
-        // Include real data from backend
-        hourly_trends: statsData.hourly_trends || null,
-        severity_distribution: statsData.severity_distribution || null,
-        method_stats: statsData.method_stats || [],
-        response_codes: statsData.response_codes || [],
-        country_stats: statsData.country_stats || []
+        top_source_ips: statsData.top_attacking_ips ?? summaryData.top_source_ips ?? [],
+        // Include real data from backend - ensure hourly_trends is passed through
+        hourly_trends: statsData.hourly_trends ?? [],
+        severity_distribution: statsData.severity_distribution ?? [],
+        method_stats: statsData.method_stats ?? [],
+        response_codes: statsData.response_codes ?? [],
+        country_stats: statsData.country_stats ?? []
       }
     };
   }

@@ -23,17 +23,14 @@ const Header: React.FC = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <Shield className="h-8 w-8 text-primary-600" />
-              <span className="text-xl font-bold text-gray-900">WAF Test</span>
+              <Shield className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold text-gray-900">WAF Security</span>
             </Link>
           </div>
 
           <nav className="hidden md:flex space-x-8">
             <Link to="/" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
               Home
-            </Link>
-            <Link to="/posts" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
-              Posts
             </Link>
             <Link to="/vulnerable" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
               WAF Tests
@@ -100,9 +97,6 @@ const Header: React.FC = () => {
           <div className="px-2 pt-2 pb-3 space-y-1">
             <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
               Home
-            </Link>
-            <Link to="/posts" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-              Posts
             </Link>
             <Link to="/vulnerable" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
               WAF Tests

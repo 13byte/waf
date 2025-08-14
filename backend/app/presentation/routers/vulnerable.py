@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Request, UploadFile, File
+from fastapi import APIRouter, Request, UploadFile, File, Response
 from app.infrastructure.config import settings
 import os
 import subprocess
 import uuid
 import mimetypes
+import xml.etree.ElementTree as ET
+import urllib.request
+import jinja2
+import requests
 
 router = APIRouter(prefix="/vulnerable", tags=["Vulnerable"])
 
@@ -234,3 +238,130 @@ def vulnerable_file_download(file_path: str):
         
     except Exception as e:
         return {"error": str(e), "attempted_path": file_path}
+
+@router.post("/xxe")
+async def vulnerable_xxe_endpoint(request: Request):
+    """Vulnerable XXE (XML External Entity) endpoint for testing"""
+    try:
+        # Get raw body
+        body = await request.body()
+        
+        # Parse XML without disabling external entities (vulnerable)
+        parser = ET.XMLParser()
+        root = ET.fromstring(body, parser=parser)
+        
+        # Process the XML
+        result = ET.tostring(root, encoding='unicode')
+        
+        return {
+            "parsed": True,
+            "result": result,
+            "message": "XML processed successfully"
+        }
+    except ET.ParseError as e:
+        return {
+            "error": f"XML Parse Error: {str(e)}",
+            "parsed": False
+        }
+    except Exception as e:
+        return {
+            "error": f"Processing error: {str(e)}",
+            "parsed": False
+        }
+
+@router.get("/ssti")
+def vulnerable_ssti_endpoint(template: str = "Hello {{name}}"):
+    """Vulnerable SSTI (Server-Side Template Injection) endpoint"""
+    try:
+        # Create unsafe Jinja2 environment (vulnerable)
+        env = jinja2.Environment()
+        
+        # Render user-provided template directly (vulnerable)
+        tmpl = env.from_string(template)
+        
+        # Render with context
+        result = tmpl.render(
+            name="user",
+            config={"debug": True, "secret": "test_secret"},
+            system=os,
+            subprocess=subprocess
+        )
+        
+        return {
+            "template": template,
+            "rendered": result,
+            "engine": "Jinja2"
+        }
+    except jinja2.exceptions.TemplateSyntaxError as e:
+        return {
+            "error": f"Template syntax error: {str(e)}",
+            "template": template
+        }
+    except Exception as e:
+        return {
+            "error": f"Template rendering error: {str(e)}",
+            "template": template
+        }
+
+@router.get("/ssrf")
+async def vulnerable_ssrf_endpoint(url: str):
+    """Vulnerable SSRF (Server-Side Request Forgery) endpoint"""
+    try:
+        # No URL validation (vulnerable)
+        if url.startswith("file://"):
+            # File protocol (local file access)
+            with urllib.request.urlopen(url) as response:
+                content = response.read().decode('utf-8', errors='ignore')
+            return {
+                "url": url,
+                "protocol": "file",
+                "content": content[:1000],  # Limit response size
+                "status": "success"
+            }
+        elif url.startswith("http://") or url.startswith("https://"):
+            # HTTP/HTTPS requests
+            response = requests.get(url, timeout=5, allow_redirects=True)
+            return {
+                "url": url,
+                "protocol": "http/https",
+                "status_code": response.status_code,
+                "headers": dict(response.headers),
+                "content": response.text[:1000],  # Limit response size
+                "final_url": response.url
+            }
+        elif url.startswith("gopher://") or url.startswith("dict://"):
+            # Other protocols
+            with urllib.request.urlopen(url, timeout=5) as response:
+                content = response.read().decode('utf-8', errors='ignore')
+            return {
+                "url": url,
+                "protocol": url.split("://")[0],
+                "content": content[:1000],
+                "status": "success"
+            }
+        else:
+            # Try as internal network address
+            if not url.startswith("http"):
+                url = f"http://{url}"
+            response = requests.get(url, timeout=5)
+            return {
+                "url": url,
+                "internal_request": True,
+                "status_code": response.status_code,
+                "content": response.text[:1000]
+            }
+    except requests.exceptions.Timeout:
+        return {
+            "error": "Request timeout",
+            "url": url
+        }
+    except requests.exceptions.ConnectionError as e:
+        return {
+            "error": f"Connection error: {str(e)}",
+            "url": url
+        }
+    except Exception as e:
+        return {
+            "error": f"SSRF request failed: {str(e)}",
+            "url": url
+        }

@@ -21,6 +21,8 @@ dependencies = [
   "websockets",
   "httpx",
   "geoip2",
+  "jinja2",
+  "requests",
 ]
 
 [project.optional-dependencies]

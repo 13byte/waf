@@ -1,21 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { User, LoginRequest, RegisterRequest } from '../types';
+import type { User, LoginRequest, RegisterRequest, AuthState, AuthAction } from '../types';
 import { apiClient } from '../utils/api';
-
-interface AuthState {
-  user: User | null;
-  isLoading: boolean;
-  isInitialized: boolean;  // Track if initial auth check is done
-  error: string | null;
-}
-
-type AuthAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_USER'; payload: User | null }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'SET_INITIALIZED' }
-  | { type: 'LOGOUT' };
 
 // Load initial user from localStorage
 const getInitialUser = (): User | null => {
@@ -98,8 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.setItem('user_info', JSON.stringify(response.data));
         } else if (response.error) {
           // Check if it's an auth error
-          if (response.error.includes('401') || response.error.includes('403') || 
-              response.error.includes('Unauthorized') || response.error.includes('Invalid')) {
+          if (response.error?.includes('401') || response.error?.includes('403') || 
+              response.error?.includes('Unauthorized') || response.error?.includes('Invalid')) {
             // Clear invalid token
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user_info');
