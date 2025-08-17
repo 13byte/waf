@@ -1,0 +1,246 @@
+# WAF Test Platform - Git Ignore Configuration
+# nginx + ModSecurity + CRS Testing Environment
+
+#################################################################
+# Environment Variables & Secrets
+#################################################################
+.env
+*.pem
+*.key
+*.crt
+config/secrets.json
+
+#################################################################
+# Python Backend (FastAPI)
+#################################################################
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+./backend/uploads/
+
+#################################################################
+# Node.js Frontend (React)
+#################################################################
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# React build artifacts
+build/
+dist/
+
+# Vite
+.vite/
+vite.config.js.timestamp-*
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Package manager locks (keep package-lock.json but ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# React development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+#################################################################
+# Docker & Containers
+#################################################################
+# Docker volumes and data
+**/mysql_data/
+**/postgres_data/
+**/redis_data/
+**/.env
+
+# Docker override files
+docker-compose.override.yml
+docker-compose.*.override.yml
+
+# Container logs
+docker-logs/
+*.dockerignore.bak
+
+#################################################################
+# Database & Storage
+#################################################################
+# MySQL data
+db/data/
+db/logs/
+db/mysql_data/
+
+# Backup files
+backups/*.sql
+backups/*.dump
+backups/*.bak
+*.backup
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+#################################################################
+# Application Logs & Runtime
+#################################################################
+# Log files
+logs/
+*.log
+*.log.*
+log/
+
+# Runtime files
+*.pid
+*.sock
+**/frontend.pid
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.cache/
+
+#################################################################
+# IDE & Development Tools
+#################################################################
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+#Claude
+
+CLAUDE.MD
+.claude
+
+#################################################################
+# Operating System
+#################################################################
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+#################################################################
+# Security & Testing
+#################################################################
+# ModSecurity test results
+test-results/
+test-reports/
+coverage/
+
+# Security scan results
+security-reports/
+vulnerability-scans/
+
+# JWT keys and tokens
+jwt-keys/
+*.jwt
+access-tokens.txt
+
+#################################################################
+# Build & Deployment
+#################################################################
+# Build artifacts
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Deployment files
+deploy/
+staging/
+
+# CI/CD
+.github/workflows/*.secrets
+.gitlab-ci.local.yml

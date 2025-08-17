@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAF Design System - Modern Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Modern Palette */
+            --primary: #0071E3;        /* Apple Blue */
+            --primary-light: #64B5F6;
+            --primary-dark: #0051A2;
+            
+            --success: #30D158;         /* Modern Green */
+            --warning: #FFD60A;         /* Modern Yellow */
+            --danger: #FF453A;          /* Modern Red */
+            --info: #0A84FF;           
+            
+            /* Sophisticated Grays */
+            --white: #FFFFFF;
+            --gray-50: #FAFBFC;         /* Almost white */
+            --gray-100: #F6F8FA;        /* Light background */
+            --gray-200: #E1E4E8;        /* Borders */
+            --gray-300: #D1D5DA;        
+            --gray-400: #959DA5;        /* Muted text */
+            --gray-500: #6A737D;        /* Secondary text */
+            --gray-600: #586069;        
+            --gray-700: #444D56;        /* Body text */
+            --gray-800: #2F363D;        /* Headings */
+            --gray-900: #24292E;        /* Primary text */
+            --black: #0D1117;           /* Pure dark */
+
+            /* Mesh Gradient Colors */
+            --gradient-1: #E3F2FD;
+            --gradient-2: #F3E5F5;
+            --gradient-3: #E8F5E9;
+            --gradient-4: #FFF3E0;
+        }
+
+        /* Dark Mode Variables */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --gray-50: #0D1117;
+                --gray-100: #161B22;
+                --gray-200: #21262D;
+                --gray-300: #30363D;
+                --gray-400: #484F58;
+                --gray-500: #6E7681;
+                --gray-600: #8B949E;
+                --gray-700: #B1BAC4;
+                --gray-800: #C9D1D9;
+                --gray-900: #F0F6FC;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            background: var(--gray-50);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Modern Mesh Gradient Background */
+        .mesh-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            opacity: 0.4;
+            background-image: 
+                radial-gradient(at 20% 30%, var(--gradient-1) 0px, transparent 50%),
+                radial-gradient(at 80% 20%, var(--gradient-2) 0px, transparent 50%),
+                radial-gradient(at 60% 70%, var(--gradient-3) 0px, transparent 50%),
+                radial-gradient(at 30% 80%, var(--gradient-4) 0px, transparent 50%);
+            filter: blur(100px);
+            animation: meshMove 20s ease-in-out infinite;
+        }
+
+        @keyframes meshMove {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(-20px, -20px) rotate(1deg); }
+            66% { transform: translate(20px, -10px) rotate(-1deg); }
+        }
+
+        /* Dark mode mesh */
+        @media (prefers-color-scheme: dark) {
+            .mesh-gradient {
+                opacity: 0.1;
+                background-image: 
+                    radial-gradient(at 20% 30%, #0071E3 0px, transparent 50%),
+                    radial-gradient(at 80% 20%, #30D158 0px, transparent 50%),
+                    radial-gradient(at 60% 70%, #FF453A 0px, transparent 50%),
+                    radial-gradient(at 30% 80%, #FFD60A 0px, transparent 50%);
+            }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            position: relative;
+        }
+
+        /* Modern Typography */
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-600) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            letter-spacing: -0.03em;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: var(--gray-500);
+            margin-bottom: 60px;
+            font-weight: 400;
+        }
+
+        .section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 32px;
+            letter-spacing: -0.02em;
+        }
+
+        /* Modern Card - No Glass Effect, Clean Shadows */
+        .card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 
+                0 0 0 1px rgba(0, 0, 0, 0.05),
+                0 1px 2px rgba(0, 0, 0, 0.05),
+                0 4px 8px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 
+                0 0 0 1px rgba(0, 0, 0, 0.05),
+                0 4px 8px rgba(0, 0, 0, 0.08),
+                0 12px 24px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .card {
+                background: var(--gray-100);
+                box-shadow: 
+                    0 0 0 1px rgba(255, 255, 255, 0.05),
+                    0 1px 2px rgba(0, 0, 0, 0.3);
+            }
+        }
+
+        /* Metric Cards - Minimal Design */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .metric-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--gray-200);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .metric-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 113, 227, 0.1);
+        }
+
+        .metric-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .metric-icon.blue {
+            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+            color: var(--primary);
+        }
+
+        .metric-icon.green {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            color: var(--success);
+        }
+
+        .metric-icon.red {
+            background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+            color: var(--danger);
+        }
+
+        .metric-icon.yellow {
+            background: linear-gradient(135deg, #FFF9C4 0%, #FFF59D 100%);
+            color: #F57C00;
+        }
+
+        .metric-label {
+            color: var(--gray-500);
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--gray-900);
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .metric-change {
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .metric-change.positive {
+            color: var(--success);
+            background: rgba(48, 209, 88, 0.1);
+        }
+
+        .metric-change.negative {
+            color: var(--danger);
+            background: rgba(255, 69, 58, 0.1);
+        }
+
+        /* Modern Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: 1px solid var(--gray-200);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-200);
+            border-color: var(--gray-300);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--gray-700);
+        }
+
+        .btn-ghost:hover {
+            background: var(--gray-100);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Event Cards - Clean Design */
+        .event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .event-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 16px 20px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .event-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.08);
+        }
+
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .event-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-critical {
+            background: rgba(255, 69, 58, 0.1);
+            color: var(--danger);
+        }
+
+        .badge-warning {
+            background: rgba(255, 214, 10, 0.1);
+            color: #F57C00;
+        }
+
+        .badge-info {
+            background: rgba(10, 132, 255, 0.1);
+            color: var(--info);
+        }
+
+        .badge-success {
+            background: rgba(48, 209, 88, 0.1);
+            color: var(--success);
+        }
+
+        .event-time {
+            color: var(--gray-400);
+            font-size: 13px;
+        }
+
+        .event-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 6px;
+        }
+
+        .event-description {
+            color: var(--gray-600);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .event-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .event-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .event-meta-item strong {
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        /* Modern Toggle */
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 0;
+        }
+
+        .toggle-label {
+            font-size: 15px;
+            color: var(--gray-700);
+            flex: 1;
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 28px;
+            background: var(--gray-300);
+            border-radius: 28px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle.active {
+            background: var(--success);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle.active .toggle-slider {
+            transform: translateX(20px);
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 2px;
+            background: var(--gray-100);
+            padding: 2px;
+            border-radius: 10px;
+            width: fit-content;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-600);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab:hover {
+            color: var(--gray-800);
+        }
+
+        .tab.active {
+            background: white;
+            color: var(--gray-900);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1px;
+            background: var(--gray-200);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .stat-item {
+            background: var(--white);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            h1 {
+                background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-400) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+
+            .metric-card,
+            .event-card,
+            .stat-item,
+            .tab.active {
+                background: var(--gray-100);
+                border-color: var(--gray-300);
+            }
+
+            .tabs {
+                background: var(--gray-200);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mesh-gradient"></div>
+    
+    <div class="container">
+        <h1>WAF Security Platform</h1>
+        <p class="subtitle">Modern Design System Components</p>
+
+        <!-- Metrics Section -->
+        <div class="section">
+            <h2 class="section-title">Real-time Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon blue">📊</div>
+                    <div class="metric-label">TOTAL REQUESTS</div>
+                    <div class="metric-value">284,392</div>
+                    <span class="metric-change positive">↑ 12.5%</span>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon red">🛡️</div>
+                    <div class="metric-label">BLOCKED THREATS</div>
+                    <div class="metric-value">1,847</div>
+                    <span class="metric-change negative">↑ 34.2%</span>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon green">✓</div>
+                    <div class="metric-label">SYSTEM HEALTH</div>
+                    <div class="metric-value">99.8%</div>
+                    <span class="metric-change positive">Optimal</span>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon yellow">⚡</div>
+                    <div class="metric-label">AVG RESPONSE</div>
+                    <div class="metric-value">42ms</div>
+                    <span class="metric-change positive">↓ 8ms</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="section">
+            <h2 class="section-title">Interface Controls</h2>
+            <div class="card">
+                <div class="tabs" style="margin-bottom: 24px;">
+                    <button class="tab active">Overview</button>
+                    <button class="tab">Security Events</button>
+                    <button class="tab">Analytics</button>
+                    <button class="tab">Settings</button>
+                </div>
+
+                <div class="button-group" style="margin-bottom: 24px;">
+                    <button class="btn btn-primary">
+                        <span>⬇</span> Export Report
+                    </button>
+                    <button class="btn btn-secondary">
+                        <span>⚙️</span> Configure
+                    </button>
+                    <button class="btn btn-ghost">
+                        <span>↻</span> Refresh
+                    </button>
+                </div>
+
+                <div class="toggle-group">
+                    <label class="toggle-label">Enable real-time protection</label>
+                    <div class="toggle active" onclick="this.classList.toggle('active')">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+                <div class="toggle-group">
+                    <label class="toggle-label">Auto-block suspicious IPs</label>
+                    <div class="toggle" onclick="this.classList.toggle('active')">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Section -->
+        <div class="section">
+            <h2 class="section-title">Recent Security Events</h2>
+            <div class="event-list">
+                <div class="event-card">
+                    <div class="event-header">
+                        <span class="event-badge badge-critical">
+                            <span>🔴</span> CRITICAL
+                        </span>
+                        <span class="event-time">2 minutes ago</span>
+                    </div>
+                    <div class="event-title">SQL Injection Attack Blocked</div>
+                    <div class="event-description">
+                        Multiple SQL injection attempts detected from IP 192.168.1.105 targeting the user authentication endpoint.
+                    </div>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <span>IP:</span> <strong>192.168.1.105</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>Target:</span> <strong>/api/auth/login</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>Action:</span> <strong>Blocked</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="event-card">
+                    <div class="event-header">
+                        <span class="event-badge badge-warning">
+                            <span>🟡</span> WARNING
+                        </span>
+                        <span class="event-time">15 minutes ago</span>
+                    </div>
+                    <div class="event-title">Unusual Traffic Pattern Detected</div>
+                    <div class="event-description">
+                        Spike in requests from geographic region with historically low traffic. Monitoring for potential DDoS.
+                    </div>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <span>Region:</span> <strong>Eastern Europe</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>Requests:</span> <strong>1,247/min</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>Action:</span> <strong>Monitoring</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="event-card">
+                    <div class="event-header">
+                        <span class="event-badge badge-info">
+                            <span>🔵</span> INFO
+                        </span>
+                        <span class="event-time">1 hour ago</span>
+                    </div>
+                    <div class="event-title">Security Rules Updated</div>
+                    <div class="event-description">
+                        OWASP Core Rule Set updated to version 3.3.5 with 47 new detection patterns.
+                    </div>
+                    <div class="event-meta">
+                        <div class="event-meta-item">
+                            <span>Version:</span> <strong>3.3.5</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>New Rules:</span> <strong>47</strong>
+                        </div>
+                        <div class="event-meta-item">
+                            <span>Status:</span> <strong>Active</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="section">
+            <h2 class="section-title">Quick Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">7</div>
+                    <div class="stat-label">Active Threats</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">142</div>
+                    <div class="stat-label">Blocked Today</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">23</div>
+                    <div class="stat-label">Countries</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">4.7k</div>
+                    <div class="stat-label">Total IPs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

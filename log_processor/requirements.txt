@@ -1,0 +1,5 @@
+sqlalchemy
+pymysql[rsa]
+python-dotenv
+watchdog
+requests

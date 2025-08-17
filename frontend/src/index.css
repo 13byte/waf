@@ -1,0 +1,34 @@
+/* Import global design system */
+@import './styles/globals.css';
+
+/* Import date picker styles */
+@import './styles/datepicker.css';
+
+@layer components {
+	/* Legacy utility classes for compatibility */
+	.overflow-wrap-anywhere {
+		overflow-wrap: anywhere;
+		word-break: break-word;
+		hyphens: auto;
+	}
+
+	.text-break-all {
+		word-break: break-all;
+		overflow-wrap: break-word;
+	}
+
+	.animate-slideDown {
+		animation: slideDown 0.3s ease-out;
+	}
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

@@ -1,0 +1,127 @@
+services:
+  # Nginx with ModSecurity and CRS
+  nginx-waf:
+    image: owasp/modsecurity-crs:nginx
+    container_name: waf_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/templates/conf.d:/etc/nginx/templates/conf.d
+      - ./logs/nginx:/var/log/nginx
+      - ./logs/modsecurity:/var/log/modsecurity
+      - ./nginx/crs_rules:/opt/owasp-crs/rules:ro
+      # - ./nginx/custom_rules:/opt/custom-rules
+    environment:
+      TZ: Asia/Seoul
+      BACKEND: http://backend:8000
+      FRONTEND: http://frontend:3000
+      MODSEC_RULE_ENGINE: on
+      MODSEC_AUDIT_ENGINE: on
+      MODSEC_AUDIT_LOG: /var/log/modsecurity/audit.log
+      MODSEC_AUDIT_LOG_FORMAT: JSON
+      MODSEC_AUDIT_LOG_PARTS: ABCHKFZ
+      MODSEC_RESP_BODY_ACCESS: on
+      PARANOIA: 1
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - waf_network
+    restart: unless-stopped
+
+  # FastAPI Backend Service
+  backend:
+    build: ./backend
+    container_name: waf_backend
+    expose:
+      - "8000"
+    environment:
+      TZ: Asia/Seoul
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: waf_test_db
+      DB_USER: waf_user
+      DB_PASSWORD: waf_pass123
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend:/app
+      - ./logs:/app/logs
+      - ./nginx/crs_rules:/opt/owasp-crs/rules:ro
+      # - custom_rules:/opt/custom-rules
+    depends_on:
+      - database
+    networks:
+      - waf_network
+    restart: unless-stopped
+
+  # React Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    container_name: waf_frontend
+    expose:
+      - "3000"
+    environment:
+      TZ: Asia/Seoul
+      NODE_ENV: production
+      ORIGIN: http://localhost
+      VITE_API_BASE_URL: /api
+      VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    networks:
+      - waf_network
+    restart: unless-stopped
+
+  # Database (MySQL)
+  database:
+    image: mysql:8.0
+    container_name: waf_database
+    environment:
+      TZ: Asia/Seoul
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: waf_test_db
+      MYSQL_USER: waf_user
+      MYSQL_PASSWORD: waf_pass123
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/config/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    networks:
+      - waf_network
+    restart: unless-stopped
+
+  # Log Processor Service
+  log-processor:
+    build: ./log_processor
+    container_name: waf_log_processor
+    depends_on:
+      - database
+    environment:
+      TZ: Asia/Seoul
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: waf_test_db
+      DB_USER: waf_user
+      DB_PASSWORD: waf_pass123
+    volumes:
+      - ./logs/modsecurity:/var/log/modsecurity
+      - log_processor_data:/app/data
+    networks:
+      - waf_network
+    restart: unless-stopped
+
+networks:
+  waf_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  log_processor_data:
+  crs_rules:
+  custom_rules:

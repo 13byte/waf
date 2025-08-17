@@ -1,0 +1,42 @@
+[project]
+name = "waf-soc-backend"
+version = "1.0.0"
+description = "WAF Security Operations Center - Backend API"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "sqlalchemy",
+  "pymysql[rsa]",
+  "cryptography",
+  "pydantic",
+  "pydantic[email]",
+  "pydantic-settings",
+  "python-jose[cryptography]",
+  "passlib[bcrypt]",
+  "bcrypt>=4.0.0",
+  "python-multipart",
+  "aiofiles",
+  "python-dotenv",
+  "websockets",
+  "httpx",
+  "geoip2",
+  "jinja2",
+  "requests",
+  "google-auth",
+  "google-auth-oauthlib",
+  "google-auth-httplib2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx", "alembic"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.uv]
+# Configuration for uv if needed
