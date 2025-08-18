@@ -254,8 +254,8 @@
 
 /* Portal for better positioning */
 .react-datepicker-popper {
-  z-index: 50;
-  position: absolute !important;
+  z-index: 9999 !important;
+  position: fixed !important;
 }
 
 .react-datepicker-popper[data-placement^="bottom"] {
@@ -264,6 +264,49 @@
 
 .react-datepicker-popper[data-placement^="top"] {
   margin-bottom: 8px;
+}
+
+/* Prevent jumping */
+.react-datepicker-wrapper {
+  position: relative;
+}
+
+.react-datepicker__portal {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.1);
+  left: 0;
+  top: 0;
+  z-index: 9998;
+}
+
+.react-datepicker__portal .react-datepicker__day-name,
+.react-datepicker__portal .react-datepicker__day,
+.react-datepicker__portal .react-datepicker__time-name {
+  width: 2rem;
+  height: 2rem;
+  line-height: 2rem;
+  margin: 0.166rem;
+}
+
+.react-datepicker__portal .react-datepicker__current-month,
+.react-datepicker__portal .react-datepicker__day-name,
+.react-datepicker__portal .react-datepicker__day,
+.react-datepicker__portal .react-datepicker__time-name {
+  font-size: 0.875rem;
+}
+
+.react-datepicker__portal .react-datepicker__navigation {
+  top: 0.875rem;
+}
+
+.react-datepicker__portal .react-datepicker__navigation--previous {
+  left: 0.875rem;
+}
+
+.react-datepicker__portal .react-datepicker__navigation--next {
+  right: 0.875rem;
 }
 
 /* Prevent layout shift when datepicker opens */

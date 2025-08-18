@@ -21,9 +21,12 @@ async def get_monitoring_stats(
 ):
     """Get WAF statistics for the given time range"""
     
-    # Default to last 24 hours if no dates provided
+    # Import KST timezone helper
+    from ...infrastructure.timezone import get_kst_now
+    
+    # Default to last 24 hours if no dates provided (use KST)
     if not end_date:
-        end_date = datetime.utcnow()
+        end_date = get_kst_now()
     if not start_date:
         start_date = end_date - timedelta(hours=24)
     

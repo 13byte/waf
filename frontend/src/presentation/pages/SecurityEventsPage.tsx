@@ -485,8 +485,10 @@ const SecurityEventsPage: React.FC = () => {
                   placeholderText="Start Date"
                   className="input-field w-full"
                   minDate={dateRange.min ? new Date(dateRange.min) : undefined}
-                  maxDate={new Date()}
+                  maxDate={filters.dateTo ? new Date(filters.dateTo) : new Date()}
                   popperPlacement="bottom-start"
+                  withPortal
+                  portalId="root-portal"
                 />
               </div>
 
@@ -510,9 +512,11 @@ const SecurityEventsPage: React.FC = () => {
                   locale={ko}
                   placeholderText="End Date"
                   className="input-field w-full"
-                  minDate={dateRange.min ? new Date(dateRange.min) : undefined}
+                  minDate={filters.dateFrom ? new Date(filters.dateFrom) : (dateRange.min ? new Date(dateRange.min) : undefined)}
                   maxDate={new Date()}
                   popperPlacement="bottom-start"
+                  withPortal
+                  portalId="root-portal"
                 />
               </div>
 

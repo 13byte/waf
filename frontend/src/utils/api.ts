@@ -165,9 +165,16 @@ class ApiClient {
       startDate.setDate(startDate.getDate() - 7); // Default to 7 days
     }
     
+    // Convert to local time string for KST timezone
+    const toLocalISOString = (date: Date) => {
+      const offset = date.getTimezoneOffset() * -1;
+      const localDate = new Date(date.getTime() + offset * 60000);
+      return localDate.toISOString().slice(0, -1) + '+09:00';
+    };
+    
     const params = new URLSearchParams({
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString()
+      start_date: toLocalISOString(startDate),
+      end_date: toLocalISOString(endDate)
     });
     
     // Get main stats from the monitoring endpoint with date parameters
@@ -175,6 +182,9 @@ class ApiClient {
     
     // Get additional summary from security-events endpoint
     const summaryResponse = await this.request<any>('/security-events/stats/summary?time_range=' + (timeRange || '7d'));
+    
+    console.log('Stats Response:', statsResponse);
+    console.log('Summary Response:', summaryResponse);
     
     // Safely merge both responses without duplication
     const statsData = statsResponse.data ?? {};

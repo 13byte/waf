@@ -49,6 +49,9 @@ const AnalyticsPage: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState(30000);
   const [isDarkMode, setIsDarkMode] = useState(false);
   
+  // Date range from database
+  const [dateRange, setDateRange] = useState({ min: '', max: '' });
+  
   // Check for dark mode on mount and when theme changes
   useEffect(() => {
     const checkDarkMode = () => {
@@ -106,6 +109,11 @@ const AnalyticsPage: React.FC = () => {
   useEffect(() => {
     fetchAnalytics();
   }, [presetRange, customStartDate, customEndDate]);
+  
+  // Fetch initial date range on mount
+  useEffect(() => {
+    fetchDateRange();
+  }, []);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -113,6 +121,29 @@ const AnalyticsPage: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [autoRefresh, refreshInterval]);
+
+  const fetchDateRange = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      
+      apiClient.setToken(token);
+      
+      // Fetch a large range to get the actual data bounds
+      const response = await apiClient.getWafStats('30d');
+      
+      if (response.data && response.data.hourly_trends && response.data.hourly_trends.length > 0) {
+        const trends = response.data.hourly_trends;
+        const dates = trends.map((t: any) => new Date(t.hour).getTime());
+        setDateRange({
+          min: new Date(Math.min(...dates)).toISOString(),
+          max: new Date(Math.max(...dates)).toISOString()
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch date range:', error);
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -161,6 +192,10 @@ const AnalyticsPage: React.FC = () => {
         }
 
         setStats(processedData);
+        
+        // Try to get date range from the data
+        // Note: This would be better if the backend provided the actual date range
+        // For now, we'll let the DatePicker be fully flexible
       }
     } catch (error: any) {
       console.error('Failed to fetch analytics:', error);
@@ -338,11 +373,15 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
               selectsStart
               startDate={customStartDate}
               endDate={customEndDate}
-              maxDate={new Date()}
+              minDate={dateRange.min ? new Date(dateRange.min) : undefined}
+              maxDate={customEndDate || new Date()}
               dateFormat="yyyy-MM-dd"
               locale={ko}
               placeholderText="Start Date"
               className="input-field"
+              popperPlacement="bottom-start"
+              withPortal
+              portalId="root-portal"
             />
             <span className="text-gray-500">to</span>
             <DatePicker
@@ -354,12 +393,15 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
               selectsEnd
               startDate={customStartDate}
               endDate={customEndDate}
-              minDate={customStartDate}
+              minDate={customStartDate || (dateRange.min ? new Date(dateRange.min) : undefined)}
               maxDate={new Date()}
               dateFormat="yyyy-MM-dd"
               locale={ko}
               placeholderText="End Date"
               className="input-field"
+              popperPlacement="bottom-start"
+              withPortal
+              portalId="root-portal"
             />
           </div>
         </div>

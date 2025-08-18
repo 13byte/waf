@@ -29,7 +29,7 @@ const MainLayout: React.FC = () => {
   const navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: <Home className="w-5 h-5" /> },
     { path: '/security-events', label: 'Security Events', icon: <Activity className="w-5 h-5" /> },
-    { path: '/analytics', label: 'Analytics', icon: <BarChart3 className="w-5 h-5" /> },
+    { path: '/analytics', label: 'Security Analytics', icon: <BarChart3 className="w-5 h-5" /> },
     { path: '/rules', label: 'WAF Rules', icon: <FileText className="w-5 h-5" /> },
     { path: '/attack-lab', label: 'Attack Lab', icon: <Bug className="w-5 h-5" /> },
     { path: '/config', label: 'Configuration', icon: <Settings className="w-5 h-5" /> }

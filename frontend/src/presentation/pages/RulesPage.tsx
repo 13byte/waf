@@ -1086,7 +1086,7 @@ const RulesPage: React.FC = () => {
                   Close
                 </button>
                 <a 
-                  href={`https://coreruleset.org/docs/rules/${selectedRule?.file?.replace('.conf', '')?.toLowerCase()}/`}
+                  href={`https://coreruleset.org/docs/rules/${selectedRule?.id}/`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-primary"
