@@ -326,10 +326,15 @@ const RulesPage: React.FC = () => {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </button>
-          <button className="btn btn-primary">
+          <a 
+            href="https://coreruleset.org/docs/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+          >
             <BookOpen className="w-4 h-4 mr-2" />
             Documentation
-          </button>
+          </a>
         </div>
       </div>
 
@@ -1080,10 +1085,15 @@ const RulesPage: React.FC = () => {
                 >
                   Close
                 </button>
-                <button className="btn btn-primary">
+                <a 
+                  href={`https://coreruleset.org/docs/rules/${selectedRule?.file?.replace('.conf', '')?.toLowerCase()}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Documentation
-                </button>
+                </a>
               </div>
             </div>
           </div>
