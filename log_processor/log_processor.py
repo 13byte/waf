@@ -23,12 +23,15 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 # --- Environment Variables ---
 DB_HOST = os.getenv("DB_HOST", "database")
-DB_PORT = os.getenv("DB_PORT", 3306)
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_NAME = os.getenv("DB_NAME", "waf_test_db")
 DB_USER = os.getenv("DB_USER", "waf_user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "waf_pass123")
-LOG_FILE_PATH = "/var/log/modsecurity/audit.log"
-STATE_FILE_PATH = "/app/data/log_processor.state"
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")  # No default password
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "/var/log/modsecurity/audit.log")
+STATE_FILE_PATH = os.getenv("STATE_FILE_PATH", "/app/data/log_processor.state")
+LOG_PROCESSOR_INTERVAL = float(os.getenv("LOG_PROCESSOR_INTERVAL", "0.5"))
+LOG_PROCESSOR_BATCH_SIZE = int(os.getenv("LOG_PROCESSOR_BATCH_SIZE", "100"))
+HEALTH_CHECK_URL = os.getenv("HEALTH_CHECK_URL", "http://backend:8000/health")
 
 # --- Database Setup ---
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -296,7 +299,7 @@ def notify_backend_new_events(events_data: list):
         return
         
     try:
-        backend_url = "http://backend:8000/api/security-events/broadcast"
+        backend_url = f"{HEALTH_CHECK_URL.replace('/health', '')}/api/security-events/broadcast"
         # Send each event individually so backend can filter
         for event in events_data:
             try:
@@ -501,8 +504,8 @@ def main():
         except Exception as e:
             logging.error(f"Error in main loop: {e}")
         
-        # Poll every 0.5 seconds for faster detection
-        time.sleep(0.5)
+        # Poll at configured interval
+        time.sleep(LOG_PROCESSOR_INTERVAL)
 
 if __name__ == "__main__":
     main()
