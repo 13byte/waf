@@ -84,9 +84,9 @@ def vulnerable_user_agent_bypass(request: Request, access_level: str = "auto"):
             "access_level": "administrator",
             "privileges": ["read", "write", "delete", "admin"],
             "sensitive_data": {
-                "api_keys": ["key_12345", "secret_67890"],
+                "api_keys": ["demo_key_only"],
                 "internal_endpoints": ["/admin/users", "/admin/config"],
-                "database_info": "mysql://localhost:3306/waf_test_db"
+                "database_info": "mysql://database:3306/waf_test_db"
             },
             "bypass_successful": True,
         }
