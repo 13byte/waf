@@ -131,6 +131,11 @@ logs/
 *.log.*
 log/
 
+# CRS rules copied from container
+nginx/crs-rules/
+# Custom rules (managed in container)
+nginx/custom-rules/
+
 # Runtime files
 *.pid
 *.sock
