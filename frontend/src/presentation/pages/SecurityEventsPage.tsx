@@ -83,7 +83,7 @@ const SecurityEventsPage: React.FC = () => {
   const [shouldApplyFilters, setShouldApplyFilters] = useState(false);
   const loadingRef = useRef(false);
 
-  const { lastMessage, isConnected } = useWebSocket('/api/ws');
+  const { lastMessage, isConnected } = useWebSocket('/api/ws/security-events');
 
   // Check authentication on mount
   useEffect(() => {

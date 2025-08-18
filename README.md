@@ -1,42 +1,33 @@
 # WAF Security Operations Center
 
-Real-time web application firewall monitoring and attack testing platform.
-
-## Services
-
-- **nginx-waf**: ModSecurity + OWASP CRS entry point (port 80)
-- **frontend**: React 18 dashboard with real-time monitoring
-- **backend**: FastAPI 0.116.1 API server with DDD architecture
-- **database**: MySQL 8.0 for event storage
-- **log-processor**: Real-time ModSecurity log parser
-
-## Tech Stack
-
-- **WAF**: ModSecurity + OWASP CRS 4.17.1 (Paranoia Level 1)
-- **Frontend**: React 18 + TypeScript + TailwindCSS + Chart.js
-- **Backend**: FastAPI 0.116.1 + Python 3.12 + SQLAlchemy
-- **Database**: MySQL 8.0 with optimized indexes
-- **Real-time**: WebSocket for live event streaming
+Real-time web application firewall monitoring and attack testing platform with OWASP CRS rule viewer.
 
 ## Features
 
-### Real-time Monitoring
-- Live security event dashboard with WebSocket
+### Real-time Security Monitoring
+- Live dashboard with WebSocket event streaming
 - Attack pattern analysis and threat scoring
-- IP reputation tracking and geo-location
-- Rule-based detection with anomaly scoring
-- CSV export for security reports
+- IP reputation tracking with geo-location
+- Anomaly-based detection with configurable thresholds
+- CSV export for security reports and analysis
 
-### Attack Testing Lab
+### CRS Rules Viewer
+- Browse all 681 OWASP Core Rule Set configurations
+- Real-time statistics: 307 critical/error rules identified
+- Advanced search across all rule files
+- Detailed rule inspection with parsed and raw data views
+- Shared volume architecture for container rule access
+
+### Attack Testing Laboratory
 - **XSS**: Script injection, event handlers, encoding bypass
 - **SQL Injection**: Union, time-based, error-based, NoSQL
 - **Path Traversal**: Directory traversal with filter bypass
-- **Command Injection**: Shell execution with multiple methods
-- **File Upload**: Extension bypass and malicious file upload
+- **Command Injection**: Shell execution testing
+- **File Upload**: Extension bypass and malicious uploads
 - **XXE**: XML external entity injection
-- **SSTI**: Server-side template injection (Jinja2)
+- **SSTI**: Server-side template injection
 - **SSRF**: Server-side request forgery
-- **Header Manipulation**: User-agent bypass and privilege escalation
+- **Header Manipulation**: User-agent and privilege escalation
 
 ## Quick Start
 
@@ -45,90 +36,123 @@ Real-time web application firewall monitoring and attack testing platform.
 chmod +x manage.sh
 ./manage.sh start
 
-# Check status
+# Check service health
 ./manage.sh status
 
 # Access dashboard
 open http://localhost
 ```
 
-**Default Login**: `admin` / `admin123`
+**Default Credentials**: `admin` / `admin123`
 
-## Management Commands
+## Tech Stack
 
-```bash
-./manage.sh start     # Start all services
-./manage.sh stop      # Stop all services
-./manage.sh restart   # Restart services
-./manage.sh status    # Health check
-./manage.sh logs      # View all logs
-./manage.sh logs [service]  # View specific service logs
-./manage.sh build     # Rebuild images
-./manage.sh clean     # Remove everything
-./manage.sh dev       # Development mode (React dev server)
-```
+- **WAF**: ModSecurity 2.9 + OWASP CRS 4.17.1
+- **Frontend**: React 18 + TypeScript + Vite + TailwindCSS
+- **Backend**: FastAPI 0.116.1 + Python 3.12 + SQLAlchemy
+- **Database**: MySQL 8.0 with optimized indexes
+- **Real-time**: WebSocket for live event streaming
+- **Container**: Docker Compose orchestration
 
 ## Architecture
 
 ```
 waf/
-├── frontend/           # React 18 + TypeScript Dashboard
+├── frontend/           # React 18 Dashboard
 │   ├── src/
-│   │   ├── domain/        # Business models and services
-│   │   ├── application/   # Use cases and DTOs
-│   │   ├── infrastructure/# API client and repositories
-│   │   └── presentation/  # UI components and pages
+│   │   ├── domain/        # Business entities
+│   │   ├── application/   # Use cases
+│   │   ├── infrastructure/# API client
+│   │   └── presentation/  # UI components
 │   └── package.json
-├── backend/            # FastAPI 0.116.1 Server
+├── backend/            # FastAPI Server
 │   ├── app/
-│   │   ├── domain/        # Models and domain services
-│   │   ├── application/   # Application services and DTOs
-│   │   ├── infrastructure/# Database, cache, auth
-│   │   └── presentation/  # API routers and dependencies
+│   │   ├── domain/        # Core business logic
+│   │   ├── application/   # Service layer
+│   │   ├── infrastructure/# Database, auth
+│   │   └── presentation/  # API routes
 │   └── pyproject.toml
-├── log_processor/      # Real-time log processing
-├── nginx/              # ModSecurity + CRS configuration
-├── db/                 # MySQL initialization scripts
+├── nginx/              # ModSecurity + CRS
+│   ├── templates/         # Nginx config
+│   ├── custom-rules/      # Custom WAF rules
+│   └── crs-rules/         # Shared CRS rules
+├── log_processor/      # Real-time log parser
+├── db/                 # MySQL initialization
 └── docker-compose.yml  # Service orchestration
 ```
 
-## API Endpoints
+## Services
 
-### Security Events
+### Container Architecture
+1. **nginx-waf**: ModSecurity + OWASP CRS (port 80)
+   - Custom rules in `/nginx/custom-rules/`
+   - CRS rules shared via `/nginx/crs-rules/`
+2. **backend**: FastAPI API server
+   - DDD architecture
+   - JWT authentication
+   - WebSocket support
+3. **frontend**: React dashboard
+   - Real-time updates
+   - Interactive charts
+4. **database**: MySQL 8.0
+   - Dual-table architecture
+   - Optimized indexes
+5. **log-processor**: ModSecurity log parser
+   - 0.5s polling interval
+   - Real-time event processing
+
+## API Documentation
+
+### Core Endpoints
+
 ```http
-GET    /api/security-events           # List events with filters
-GET    /api/security-events/{id}      # Event details
-GET    /api/security-events/by-ip/{ip} # Events by source IP
-POST   /api/security-events/export    # CSV export
-WS     /api/ws/security-events        # Real-time stream
+# Authentication
+POST   /api/auth/login
+POST   /api/auth/register
+GET    /api/auth/me
+
+# Security Events
+GET    /api/security-events
+GET    /api/security-events/{id}
+POST   /api/security-events/export
+WS     /api/ws/security-events
+
+# Dashboard
+GET    /api/dashboard/stats
+GET    /api/dashboard/recent-events
+
+# CRS Rules
+GET    /api/crs-rules/list
+GET    /api/crs-rules/content?filename={file}
+GET    /api/crs-rules/search?keyword={term}
+
+# Attack Testing
+GET    /api/vulnerable/xss
+GET    /api/vulnerable/sqli
+POST   /api/vulnerable/file-upload
 ```
 
-### Dashboard & Analytics
-```http
-GET    /api/dashboard/stats           # Dashboard statistics
-GET    /api/dashboard/recent-events   # Recent security events
-GET    /api/analytics/aggregated-stats # Detailed analytics
-GET    /api/analytics/comparison      # Period comparison
-```
+**Interactive Docs**: 
+- Swagger UI: `http://localhost/api/docs`
+- ReDoc: `http://localhost/api/redoc`
 
-### Attack Testing Lab
-```http
-GET    /api/vulnerable/xss            # XSS testing
-GET    /api/vulnerable/sqli           # SQL injection testing
-GET    /api/vulnerable/path-traversal # Path traversal testing
-GET    /api/vulnerable/command-injection # Command injection
-POST   /api/vulnerable/file-upload    # File upload testing
-POST   /api/vulnerable/xxe            # XXE injection testing
-GET    /api/vulnerable/ssti           # Template injection
-GET    /api/vulnerable/ssrf           # SSRF testing
-GET    /api/vulnerable/header-manipulation # Header manipulation
-```
+## Management
 
-### Authentication
-```http
-POST   /api/auth/login               # User authentication
-POST   /api/auth/register            # User registration
-GET    /api/auth/me                  # Current user info
+```bash
+# Service Control
+./manage.sh start       # Start all services
+./manage.sh stop        # Stop all services
+./manage.sh restart     # Restart services
+./manage.sh status      # Health check
+
+# Development
+./manage.sh dev         # React dev server
+./manage.sh build       # Rebuild images
+./manage.sh clean       # Remove everything
+
+# Logs
+./manage.sh logs        # All service logs
+./manage.sh logs backend  # Specific service
 ```
 
 ## Development
@@ -137,116 +161,83 @@ GET    /api/auth/me                  # Current user info
 ```bash
 cd frontend
 npm install
-npm run dev     # Dev server on http://localhost:5173
-npm run build   # Production build
+npm run dev    # http://localhost:5173
+npm run build  # Production build
 ```
 
 ### Backend Development
 ```bash
-cd backend
-# Container access for development
 docker exec -it waf_backend bash
+uv sync                # Install dependencies
+uv run uvicorn main:app --reload
 ```
 
 ### Database Access
 ```bash
-# Connect to MySQL
 docker exec -it waf_database mysql -u waf_user -p
 # Password: waf_pass123
-# Database: waf_test_db
 ```
-
-### Log Monitoring
-```bash
-# ModSecurity audit logs
-tail -f logs/modsecurity/audit.log
-
-# Service logs
-docker-compose logs -f backend
-docker-compose logs -f log-processor
-```
-
-## Database Schema
-
-### Core Tables
-- **security_events**: New architecture with enhanced attack classification
-- **waf_logs**: Legacy compatibility for raw ModSecurity audit logs
-- **users**: User management with role-based access
-- **waf_config**: WAF configuration and custom rules
-
-### Key Features
-- Optimized indexes for real-time queries
-- Dual table approach for backward compatibility
-- Time-based partitioning ready
-- Full-text search capabilities
 
 ## Configuration
 
-### WAF Settings (docker-compose.yml)
+### WAF Settings
 ```yaml
-MODSEC_RULE_ENGINE: on           # Enable ModSecurity
-PARANOIA: 1                      # CRS paranoia level (1-4)
-MODSEC_AUDIT_LOG_FORMAT: JSON    # JSON audit logs
+# docker-compose.yml
+MODSEC_RULE_ENGINE: on       # Enable ModSecurity
+PARANOIA: 1                  # CRS paranoia level (1-4)
+MODSEC_AUDIT_LOG_FORMAT: JSON
 ```
 
 ### Environment Variables
 ```bash
-# Backend (.env)
+# Backend
 DB_HOST=database
 DB_NAME=waf_test_db
 SECRET_KEY=your-secret-key
-DEBUG=false
 
-# Frontend (.env)
+# Frontend
 VITE_API_BASE_URL=/api
 ```
 
-## Attack Detection Logic
+## Attack Detection
 
-### Rule-Based Detection
-- OWASP CRS pattern matching: `REQUEST-9XX-APPLICATION-ATTACK-*`
-- Custom rule support: `CUSTOM-XXX-ATTACK-*`
-- Anomaly scoring with configurable thresholds (default: 5)
-
-### Blocking Decision
-- Primary: Blocking evaluation rule (949110) with anomaly score ≥5
-- Secondary: Attack rules with 403 status code
-- Detection-only mode for scores below threshold
+### Anomaly Scoring
+- Threshold: 5 points triggers blocking
+- Each attack pattern adds to anomaly score
+- Blocking evaluation rule: 949110
 
 ### Event Classification
-```
-Critical: High anomaly score + blocked + multiple attack types
-High:     Attack detected + blocked OR high anomaly score
-Medium:   Attack detected + moderate score
-Low:      Minor anomalies + unblocked
-```
+- **Critical**: High score + blocked + multiple attacks
+- **High**: Attack detected + blocked
+- **Medium**: Attack detected, moderate score
+- **Low**: Minor anomalies, unblocked
+
+## Performance
+
+- **Log Processing**: 0.5s polling interval
+- **Database**: Composite indexes for queries
+- **WebSocket**: HIGH severity events only
+- **Cache**: 5-minute TTL for statistics
+- **CSV Export**: Handles 100k+ events
 
 ## Troubleshooting
 
-### WAF Not Blocking
-1. Check paranoia level: `PARANOIA=1` in docker-compose.yml
-2. Verify engine status: `MODSEC_RULE_ENGINE=on`
-3. Monitor audit logs: `tail -f logs/modsecurity/audit.log`
+### Common Issues
 
-### Missing Events
-1. Check log-processor status: `docker ps | grep log-processor`
-2. Verify database connection
-3. Review processor logs: `docker-compose logs log-processor`
+**WAF Not Blocking**
+- Check `PARANOIA` level in docker-compose.yml
+- Verify `MODSEC_RULE_ENGINE=on`
+- Monitor audit logs: `tail -f logs/modsecurity/audit.log`
 
-### WebSocket Issues
-1. Ensure backend is running and healthy
-2. Check nginx proxy configuration
-3. Verify endpoint: `/api/ws/security-events`
+**Missing Events**
+- Check log-processor: `docker ps | grep log-processor`
+- Review logs: `docker-compose logs log-processor`
 
-### Database Connection
-1. Confirm MySQL container: `docker ps | grep database`
-2. Check credentials in docker-compose.yml
-3. Test connection: `docker exec -it waf_database mysql -u waf_user -p`
+**WebSocket Connection Failed**
+- Ensure backend is running
+- Check endpoint: `/api/ws/security-events`
 
-## Performance Notes
+**Database Connection Error**
+- Verify MySQL container: `docker ps | grep database`
+- Test connection: `docker exec -it waf_database mysql -u waf_user -p`
 
-- Log processing: 0.5s polling interval for real-time detection
-- Database queries: Optimized with composite indexes
-- WebSocket: Broadcasts only critical events (HIGH severity or blocked)
-- Caching: 5-minute TTL for dashboard statistics
-- CSV export: Handles up to 100k events efficiently

@@ -23,6 +23,9 @@ start_services() {
     
     cd "$PROJECT_DIR"
     
+    echo "📋 Initializing custom rules directory..."
+    mkdir -p ./nginx/custom-rules
+    
     echo "🔧 Building services..."
     docker-compose -f "$COMPOSE_FILE" build
     
@@ -55,6 +58,10 @@ start_services() {
     
     echo "⏳ Waiting for log processor startup..."
     sleep 3
+    
+    echo "📋 Syncing CRS rules for backend access..."
+    mkdir -p ./nginx/crs-rules
+    docker cp waf_nginx:/opt/owasp-crs/rules/. ./nginx/crs-rules/ 2>/dev/null || true
     
     echo "✅ All services started!"
     echo "📍 WAF Frontend: http://localhost"

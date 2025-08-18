@@ -8,10 +8,9 @@ services:
       - "443:443"
     volumes:
       - ./nginx/templates/conf.d:/etc/nginx/templates/conf.d
+      - ./nginx/custom-rules:/opt/custom-rules:rw
       - ./logs/nginx:/var/log/nginx
       - ./logs/modsecurity:/var/log/modsecurity
-      - ./nginx/crs_rules:/opt/owasp-crs/rules:ro
-      # - ./nginx/custom_rules:/opt/custom-rules
     environment:
       TZ: Asia/Seoul
       BACKEND: http://backend:8000
@@ -48,8 +47,7 @@ services:
       - ./backend/uploads:/app/uploads
       - ./backend:/app
       - ./logs:/app/logs
-      - ./nginx/crs_rules:/opt/owasp-crs/rules:ro
-      # - custom_rules:/opt/custom-rules
+      - ./nginx/crs-rules:/app/nginx/crs-rules:ro
     depends_on:
       - database
     networks:
@@ -123,5 +121,3 @@ networks:
 volumes:
   mysql_data:
   log_processor_data:
-  crs_rules:
-  custom_rules:

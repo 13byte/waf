@@ -255,6 +255,19 @@ class ApiClient {
     return this.request(`/rules/category/${categoryId}`);
   }
 
+  // CRS Rules API (Docker container rules)
+  async getCrsRulesList(): Promise<ApiResponse<any>> {
+    return this.request('/crs-rules/list');
+  }
+
+  async getCrsRuleContent(filename: string): Promise<ApiResponse<any>> {
+    return this.request(`/crs-rules/content?filename=${encodeURIComponent(filename)}`);
+  }
+
+  async searchCrsRules(keyword: string): Promise<ApiResponse<any>> {
+    return this.request(`/crs-rules/search?keyword=${encodeURIComponent(keyword)}`);
+  }
+
   async getRuleDetails(ruleId: string): Promise<ApiResponse<any>> {
     return this.request(`/rules/rule/${ruleId}`);
   }

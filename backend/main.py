@@ -15,7 +15,8 @@ from app.presentation.routers import (
     geoip,
     analytics,
     google_auth,
-    rules
+    rules,
+    crs_rules
 )
 import os
 import asyncio
@@ -71,6 +72,7 @@ app.include_router(stats.router)  # /api/monitoring
 app.include_router(geoip.router)  # /api/geoip
 app.include_router(analytics.router)  # /api/analytics
 app.include_router(rules.router)  # /api/rules
+app.include_router(crs_rules.router)  # /api/crs-rules
 
 
 @app.get("/")
