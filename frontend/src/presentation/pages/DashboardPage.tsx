@@ -19,7 +19,7 @@ import {
 import { GetDashboardDataUseCase, DashboardData } from '../../application/use-cases/dashboard/GetDashboardDataUseCase';
 import { SecurityEventRepository } from '../../infrastructure/repositories/SecurityEventRepository';
 import { SecurityAnalysisService } from '../../domain/services/SecurityAnalysisService';
-import { ApiClient } from '../../infrastructure/api/ApiClient';
+import { apiClient } from '../../services/apiClient';
 import { TimeRange } from '../../domain/value-objects/TimeRange';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
@@ -72,7 +72,6 @@ const DashboardPage: React.FC = () => {
       setLoading(true);
       
       // Initialize dependencies
-      const apiClient = new ApiClient();
       const securityEventRepo = new SecurityEventRepository(apiClient);
       const securityAnalysisService = new SecurityAnalysisService();
       const getDashboardDataUseCase = new GetDashboardDataUseCase(

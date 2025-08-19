@@ -26,8 +26,10 @@ export class ApiClient {
       'Content-Type': 'application/json'
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // Always get fresh token from localStorage
+    const currentToken = localStorage.getItem('auth_token');
+    if (currentToken) {
+      headers['Authorization'] = `Bearer ${currentToken}`;
     }
 
     return headers;
@@ -50,7 +52,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();
@@ -64,7 +68,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();
@@ -78,7 +84,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();
@@ -91,7 +99,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();

@@ -21,7 +21,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useWebSocket } from '../../hooks/useWebSocket';
-import { apiClient } from '../../utils/api';
+import { apiClient } from '../../services/apiClient';
 import EventTable from '../components/SecurityEvents/EventTable';
 import EventDetailsModal from '../components/SecurityEvents/EventDetailsModal';
 import type { SecurityEvent } from '../../types/SecurityEvent';
@@ -164,34 +164,23 @@ const SecurityEventsPage: React.FC = () => {
     loadingRef.current = true;
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.append('page', pagination.page.toString());
-      params.append('page_size', pagination.pageSize.toString());
+      const params: Record<string, any> = {
+        page: pagination.page,
+        page_size: pagination.pageSize
+      };
       
-      if (filters.search) params.append('search', filters.search);
-      if (filters.attackType) params.append('attack_type', filters.attackType);
-      if (filters.severity) params.append('severity', filters.severity);
-      if (filters.blocked) params.append('blocked_only', filters.blocked);
-      if (filters.sourceIp) params.append('source_ip', filters.sourceIp);
-      if (filters.statusCode) params.append('status_code', filters.statusCode);
-      if (filters.dateFrom) params.append('start_date', filters.dateFrom);
-      if (filters.dateTo) params.append('end_date', filters.dateTo);
-      if (filters.method) params.append('method', filters.method);
-      if (filters.riskScore) params.append('risk_score', filters.riskScore);
+      if (filters.search) params.search = filters.search;
+      if (filters.attackType) params.attack_type = filters.attackType;
+      if (filters.severity) params.severity = filters.severity;
+      if (filters.blocked) params.blocked_only = filters.blocked;
+      if (filters.sourceIp) params.source_ip = filters.sourceIp;
+      if (filters.statusCode) params.status_code = filters.statusCode;
+      if (filters.dateFrom) params.start_date = filters.dateFrom;
+      if (filters.dateTo) params.end_date = filters.dateTo;
+      if (filters.method) params.method = filters.method;
+      if (filters.riskScore) params.risk_score = filters.riskScore;
 
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/security-events?${params}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
-      
-      if (response.status === 403) {
-        handle403Error();
-        return;
-      }
-      
-      const data = await response.json();
+      const data = await apiClient.get<any>('/security-events', params);
       
       setEvents(data.events || []);
       setPagination({
@@ -207,8 +196,11 @@ const SecurityEventsPage: React.FC = () => {
           max: new Date(Math.max(...dates)).toISOString()
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load events:', error);
+      if (error?.status === 403 || error?.status === 401) {
+        handle403Error();
+      }
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -257,24 +249,14 @@ const SecurityEventsPage: React.FC = () => {
   // Event details
   const openEventDetails = async (event: SecurityEvent) => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/security-events/${event.id}`, {
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
-      });
-      
-      if (response.status === 403) {
+      const detailedEvent = await apiClient.get<SecurityEvent>(`/security-events/${event.id}`);
+      setSelectedEvent(detailedEvent);
+    } catch (error: any) {
+      console.error('Failed to fetch event details:', error);
+      if (error?.status === 403 || error?.status === 401) {
         handle403Error();
         return;
       }
-      
-      if (response.ok) {
-        const detailedEvent = await response.json();
-        setSelectedEvent(detailedEvent);
-      }
-    } catch (error) {
-      console.error('Failed to fetch event details:', error);
       setSelectedEvent(event);
     }
   };
@@ -282,17 +264,25 @@ const SecurityEventsPage: React.FC = () => {
   // Export
   const exportEvents = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.attackType) params.append('attack_type', filters.attackType);
-      if (filters.severity) params.append('severity', filters.severity);
-      if (filters.blocked) params.append('blocked_only', filters.blocked);
-      if (filters.sourceIp) params.append('source_ip', filters.sourceIp);
-      if (filters.dateFrom) params.append('start_date', filters.dateFrom);
-      if (filters.dateTo) params.append('end_date', filters.dateTo);
+      const params: Record<string, any> = {};
+      if (filters.search) params.search = filters.search;
+      if (filters.attackType) params.attack_type = filters.attackType;
+      if (filters.severity) params.severity = filters.severity;
+      if (filters.blocked) params.blocked_only = filters.blocked;
+      if (filters.sourceIp) params.source_ip = filters.sourceIp;
+      if (filters.dateFrom) params.start_date = filters.dateFrom;
+      if (filters.dateTo) params.end_date = filters.dateTo;
+
+      // Need to use fetch for blob response
+      const url = new URL(`${window.location.origin}/api/security-events/export`);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
 
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/security-events/export?${params}`, {
+      const response = await fetch(url.toString(), {
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
         }
@@ -304,9 +294,9 @@ const SecurityEventsPage: React.FC = () => {
       }
       
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = downloadUrl;
       a.download = `security-events-${new Date().toISOString()}.csv`;
       a.click();
     } catch (error) {

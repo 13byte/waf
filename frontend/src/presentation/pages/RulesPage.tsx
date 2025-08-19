@@ -6,7 +6,7 @@ import {
   AlertCircle, Layers, BookOpen, ExternalLink,
   FolderTree, Terminal, FileCode
 } from 'lucide-react';
-import { apiClient } from '../../utils/api';
+import { apiClient } from '../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 
 interface RuleDetail {
@@ -62,23 +62,17 @@ const RulesPage: React.FC = () => {
   const fetchCrsRules = async () => {
     try {
       setCrsLoading(true);
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
+      // ApiClient automatically handles token
+      const response = await apiClient.get<any>('/crs-rules/list');
       
-      apiClient.setToken(token);
-      const response = await apiClient.getCrsRulesList();
-      
-      if (response.data) {
-        setCrsRules(response.data.rules || []);
+      if (response) {
+        setCrsRules(response.rules || []);
         // Use actual counts from backend
-        if (response.data.total_rules !== undefined) {
-          setTotalRuleCount(response.data.total_rules);
+        if (response.total_rules !== undefined) {
+          setTotalRuleCount(response.total_rules);
         }
-        if (response.data.critical_rules !== undefined) {
-          setCriticalRuleCount(response.data.critical_rules);
+        if (response.critical_rules !== undefined) {
+          setCriticalRuleCount(response.critical_rules);
         }
       }
     } catch (error: any) {
@@ -93,12 +87,13 @@ const RulesPage: React.FC = () => {
     
     try {
       setCrsLoading(true);
-      const token = localStorage.getItem('auth_token');
-      apiClient.setToken(token);
-      const response = await apiClient.searchCrsRules(crsSearchTerm);
+      // ApiClient automatically handles token
+      const response = await apiClient.get<any>('/crs-rules/search', {
+        keyword: crsSearchTerm
+      });
       
-      if (response.data) {
-        setCrsSearchResults(response.data);
+      if (response) {
+        setCrsSearchResults(response);
       }
     } catch (error) {
       console.error('Failed to search CRS rules:', error);
@@ -110,14 +105,15 @@ const RulesPage: React.FC = () => {
   const viewCrsRuleContent = async (filename: string) => {
     try {
       setCrsLoading(true);
-      const token = localStorage.getItem('auth_token');
-      apiClient.setToken(token);
-      const response = await apiClient.getCrsRuleContent(filename);
+      // ApiClient automatically handles token
+      const response = await apiClient.get<any>('/crs-rules/content', {
+        filename
+      });
       
-      if (response.data) {
-        setSelectedCrsFile(response.data);
+      if (response) {
+        setSelectedCrsFile(response);
         // Parse rules from content
-        parseRulesFromContent(response.data.content);
+        parseRulesFromContent(response.content);
       }
     } catch (error) {
       console.error('Failed to fetch CRS rule content:', error);
@@ -200,17 +196,11 @@ const RulesPage: React.FC = () => {
   const fetchRules = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
+      // ApiClient automatically handles token
+      const response = await apiClient.get<any>('/rules');
       
-      apiClient.setToken(token);
-      const response = await apiClient.getWafRules();
-      
-      if (response.data) {
-        setCategories(response.data.categories || []);
+      if (response) {
+        setCategories(response.categories || []);
       }
     } catch (error: any) {
       console.error('Failed to fetch rules:', error);

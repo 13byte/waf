@@ -78,8 +78,13 @@ export class SecurityEventRepository implements ISecurityEventRepository {
       if (filter.blocked !== undefined) params.blocked_only = filter.blocked;
       if (filter.search) params.search = filter.search;
       if (filter.timeRange) {
-        params.start_date = filter.timeRange.startDate.toISOString();
-        params.end_date = filter.timeRange.endDate.toISOString();
+        // Convert to local timezone ISO string like SecurityEventsPage does
+        const toLocalISOString = (date: Date) => {
+          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+          return localDate.toISOString();
+        };
+        params.start_date = toLocalISOString(filter.timeRange.startDate);
+        params.end_date = toLocalISOString(filter.timeRange.endDate);
       }
     }
     
@@ -115,7 +120,9 @@ export class SecurityEventRepository implements ISecurityEventRepository {
       // Calculate time range string for dashboard API
       const now = new Date();
       const hours = Math.abs(now.getTime() - timeRange.startDate.getTime()) / 36e5;
-      if (hours <= 24) {
+      if (hours <= 1) {
+        params.time_range = '1h';
+      } else if (hours <= 24) {
         params.time_range = '24h';
       } else if (hours <= 24 * 7) {
         params.time_range = '7d';
@@ -126,28 +133,41 @@ export class SecurityEventRepository implements ISecurityEventRepository {
       params.time_range = '24h';
     }
     
-    const response = await this.apiClient.get<{
-      stats: {
-        total_requests: number;
-        blocked_requests: number;
-        attack_requests: number;
-        block_rate: number;
-        top_attack_types: Array<{ type: string; count: number }>;
-        top_source_ips: Array<{ ip: string; count: number }>;
+    try {
+      const response = await this.apiClient.get<{
+        stats: {
+          total_requests: number;
+          blocked_requests: number;
+          attack_requests: number;
+          block_rate: number;
+          top_attack_types: Array<{ type: string; count: number }>;
+          top_source_ips: Array<{ ip: string; count: number }>;
+        };
+        threat_level: any;
+        risk_score: number;
+        time_range: string;
+      }>('/dashboard/stats', params);
+      
+      return {
+        totalEvents: response.stats.total_requests,
+        blockedEvents: response.stats.blocked_requests,
+        attackEvents: response.stats.attack_requests,
+        blockRate: response.stats.block_rate,
+        topAttackTypes: response.stats.top_attack_types || [],
+        topSourceIps: response.stats.top_source_ips || []
       };
-      threat_level: any;
-      risk_score: number;
-      time_range: string;
-    }>('/dashboard/stats', params);
-    
-    return {
-      totalEvents: response.stats.total_requests,
-      blockedEvents: response.stats.blocked_requests,
-      attackEvents: response.stats.attack_requests,
-      blockRate: response.stats.block_rate,
-      topAttackTypes: response.stats.top_attack_types || [],
-      topSourceIps: response.stats.top_source_ips || []
-    };
+    } catch (error) {
+      console.error('Failed to get dashboard stats:', error);
+      // Return default values if API fails
+      return {
+        totalEvents: 0,
+        blockedEvents: 0,
+        attackEvents: 0,
+        blockRate: 0,
+        topAttackTypes: [],
+        topSourceIps: []
+      };
+    }
   }
 
   async getRecentEvents(limit: number): Promise<SecurityEvent[]> {
@@ -196,9 +216,9 @@ export class SecurityEventRepository implements ISecurityEventRepository {
         );
       });
     } catch (error) {
-      // Fallback to using getAll
-      const { events } = await this.getAll(undefined, { page: 1, limit });
-      return events;
+      console.error('Failed to get recent events:', error);
+      // Return empty array if API fails
+      return [];
     }
   }
 

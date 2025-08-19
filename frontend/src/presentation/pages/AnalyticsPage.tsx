@@ -14,7 +14,7 @@ import {
   Users, Server, RefreshCw, Info, ChevronDown, ChevronUp,
   ArrowUp, ArrowDown, Minus, Layers, ExternalLink
 } from 'lucide-react';
-import { apiClient } from '../../utils/api';
+import { apiClient } from '../../services/apiClient';
 import { useNavigate } from 'react-router-dom';
 import ChartErrorBoundary from '../../components/ChartErrorBoundary';
 
@@ -124,16 +124,15 @@ const AnalyticsPage: React.FC = () => {
 
   const fetchDateRange = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return;
-      
-      apiClient.setToken(token);
-      
+      // ApiClient automatically handles token
       // Fetch a large range to get the actual data bounds
-      const response = await apiClient.getWafStats('30d');
+      const response = await apiClient.get<AnalyticsData>('/monitoring/stats', {
+        start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+        end_date: new Date().toISOString()
+      });
       
-      if (response.data && response.data.hourly_trends && response.data.hourly_trends.length > 0) {
-        const trends = response.data.hourly_trends;
+      if (response && response.hourly_trends && response.hourly_trends.length > 0) {
+        const trends = response.hourly_trends;
         const dates = trends.map((t: any) => new Date(t.hour).getTime());
         setDateRange({
           min: new Date(Math.min(...dates)).toISOString(),
@@ -148,37 +147,46 @@ const AnalyticsPage: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
       
-      apiClient.setToken(token);
-
-      let timeRange = presetRange;
+      // Prepare date parameters based on selection
+      let startDate: Date;
+      let endDate = new Date();
+      
       if (dateRangeType === 'custom' && customStartDate && customEndDate) {
-        timeRange = 'custom';
+        startDate = customStartDate;
+        endDate = customEndDate;
+      } else {
+        // Calculate start date based on preset range
+        if (presetRange === '1h') {
+          startDate = new Date(Date.now() - 60 * 60 * 1000);
+        } else if (presetRange === '24h') {
+          startDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        } else if (presetRange === '7d') {
+          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        } else {
+          startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        }
       }
 
-      const response = await apiClient.getWafStats(timeRange);
+      const response = await apiClient.get<any>('/monitoring/stats', {
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString()
+      });
       
-      if (response.data) {
+      if (response) {
         // Process and format the data
         const processedData = {
-          ...response.data,
-          // Ensure all required fields exist with defaults
-          total_requests: response.data.total_requests || 0,
-          blocked_requests: response.data.blocked_requests || 0,
-          attack_requests: response.data.attack_requests || 0,
-          block_rate: response.data.block_rate || 0,
-          top_attack_types: response.data.top_attack_types || [],
-          top_source_ips: response.data.top_source_ips || [],
-          hourly_trends: response.data.hourly_trends || [],
-          severity_distribution: response.data.severity_distribution || [],
-          country_stats: response.data.country_stats || [],
-          method_stats: response.data.method_stats || [],
-          response_codes: response.data.response_codes || []
+          total_requests: response.summary?.total_requests || 0,
+          blocked_requests: response.summary?.blocked_requests || 0,
+          attack_requests: response.summary?.attack_requests || 0,
+          block_rate: response.summary?.block_rate || 0,
+          top_attack_types: response.attack_types || [],
+          top_source_ips: response.top_attacking_ips || [],
+          hourly_trends: response.hourly_trends || [],
+          severity_distribution: response.severity_distribution || [],
+          country_stats: response.country_stats || [],
+          method_stats: response.method_stats || [],
+          response_codes: response.response_codes || []
         };
 
         // Format hourly trends if they exist
@@ -199,7 +207,7 @@ const AnalyticsPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Failed to fetch analytics:', error);
-      if (error.response?.status === 403 || error.response?.status === 401) {
+      if (error?.status === 403 || error?.status === 401) {
         localStorage.removeItem('auth_token');
         navigate('/login');
       }

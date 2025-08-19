@@ -9,7 +9,7 @@ const ProtectedRoute: React.FC = () => {
     // Optional: Verify token validity with backend
     if (token) {
       // You could add token validation here
-      fetch('/api/auth/verify', {
+      fetch('/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
