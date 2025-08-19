@@ -23,6 +23,19 @@ export interface SecurityEventStats {
   blockRate: number;
   topAttackTypes: Array<{ type: string; count: number }>;
   topSourceIps: Array<{ ip: string; count: number }>;
+  system_health?: number;
+  avg_response_time?: number;
+  changes?: {
+    total_requests_change: number;
+    blocked_requests_change: number;
+    attack_requests_change: number;
+  };
+  hourly_trends?: Array<{
+    label: string;
+    total: number;
+    blocked: number;
+    attacks: number;
+  }>;
 }
 
 export interface ISecurityEventRepository {

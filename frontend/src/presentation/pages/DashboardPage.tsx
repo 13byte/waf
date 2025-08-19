@@ -54,6 +54,8 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [realtimeEvents, setRealtimeEvents] = useState<any[]>([]);
 
   // Check authentication on mount
   useEffect(() => {
@@ -66,6 +68,66 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     loadDashboardData();
   }, [timeRange]);
+
+  // WebSocket connection for real-time updates
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/ws/security-events`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('WebSocket connected');
+          setWsConnected(true);
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            // Add to realtime events (keep last 10)
+            setRealtimeEvents(prev => [data, ...prev].slice(0, 10));
+            // Reload dashboard data if it's a high severity event
+            if (data.severity === 'HIGH' || data.severity === 'CRITICAL') {
+              loadDashboardData();
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err);
+          }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setWsConnected(false);
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket disconnected');
+          setWsConnected(false);
+          // Reconnect after 3 seconds
+          setTimeout(connectWebSocket, 3000);
+        };
+      } catch (err) {
+        console.error('Failed to connect WebSocket:', err);
+      }
+    };
+    
+    // Connect on mount
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      connectWebSocket();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -145,11 +207,11 @@ const DashboardPage: React.FC = () => {
 
   // Chart data for traffic trends
   const trafficChartData = {
-    labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+    labels: data.hourlyTrends ? data.hourlyTrends.map(t => t.label) : [],
     datasets: [
       {
         label: 'Total Requests',
-        data: Array.from({ length: 24 }, () => Math.floor(Math.random() * 1000)),
+        data: data.hourlyTrends ? data.hourlyTrends.map(t => t.total) : [],
         borderColor: 'rgb(0, 113, 227)',
         backgroundColor: 'rgba(0, 113, 227, 0.1)',
         tension: 0.4,
@@ -157,7 +219,7 @@ const DashboardPage: React.FC = () => {
       },
       {
         label: 'Blocked Requests',
-        data: Array.from({ length: 24 }, () => Math.floor(Math.random() * 200)),
+        data: data.hourlyTrends ? data.hourlyTrends.map(t => t.blocked) : [],
         borderColor: 'rgb(239, 68, 68)',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         tension: 0.4,
@@ -168,9 +230,13 @@ const DashboardPage: React.FC = () => {
 
   // Chart data for attack types
   const attackTypesChartData = {
-    labels: data.topAttackTypes.slice(0, 5).map(a => a.type),
+    labels: data.topAttackTypes && data.topAttackTypes.length > 0 
+      ? data.topAttackTypes.slice(0, 5).map(a => a.type || 'Unknown')
+      : [],
     datasets: [{
-      data: data.topAttackTypes.slice(0, 5).map(a => a.count),
+      data: data.topAttackTypes && data.topAttackTypes.length > 0
+        ? data.topAttackTypes.slice(0, 5).map(a => a.count || 0)
+        : [],
       backgroundColor: [
         'rgba(239, 68, 68, 0.8)',
         'rgba(245, 158, 11, 0.8)',
@@ -217,9 +283,13 @@ const DashboardPage: React.FC = () => {
             📊
           </div>
           <div className="metric-label">TOTAL REQUESTS</div>
-          <div className="metric-value">{data.stats.totalRequests.toLocaleString()}</div>
-          {data.stats.totalRequests > 0 && (
-            <span className="metric-change positive">↑ 12.5%</span>
+          <div className="metric-value">
+            {data.stats.totalRequests ? data.stats.totalRequests.toLocaleString() : '0'}
+          </div>
+          {data.changes?.total_requests_change !== undefined && data.changes.total_requests_change !== 0 && (
+            <span className={`metric-change ${data.changes.total_requests_change >= 0 ? 'positive' : 'negative'}`}>
+              {data.changes.total_requests_change >= 0 ? '↑' : '↓'} {Math.abs(data.changes.total_requests_change)}%
+            </span>
           )}
         </div>
 
@@ -232,9 +302,13 @@ const DashboardPage: React.FC = () => {
             🛡️
           </div>
           <div className="metric-label">BLOCKED THREATS</div>
-          <div className="metric-value">{data.stats.blockedRequests.toLocaleString()}</div>
-          {data.stats.blockedRequests > 0 && (
-            <span className="metric-change negative">↑ 34.2%</span>
+          <div className="metric-value">
+            {data.stats.blockedRequests ? data.stats.blockedRequests.toLocaleString() : '0'}
+          </div>
+          {data.changes?.blocked_requests_change !== undefined && data.changes.blocked_requests_change !== 0 && (
+            <span className={`metric-change ${data.changes.blocked_requests_change > 20 ? 'negative' : 'warning'}`}>
+              {data.changes.blocked_requests_change >= 0 ? '↑' : '↓'} {Math.abs(data.changes.blocked_requests_change)}%
+            </span>
           )}
         </div>
 
@@ -247,8 +321,14 @@ const DashboardPage: React.FC = () => {
             ✓
           </div>
           <div className="metric-label">SYSTEM HEALTH</div>
-          <div className="metric-value">99.8%</div>
-          <span className="metric-change positive">Optimal</span>
+          <div className="metric-value">
+            {data.systemHealth !== undefined ? `${data.systemHealth}%` : 'No data'}
+          </div>
+          {data.systemHealth !== undefined && (
+            <span className={`metric-change ${data.systemHealth >= 95 ? 'positive' : data.systemHealth >= 80 ? 'warning' : 'negative'}`}>
+              {data.systemHealth >= 95 ? 'Optimal' : data.systemHealth >= 80 ? 'Good' : 'Degraded'}
+            </span>
+          )}
         </div>
 
         {/* Average Response Card */}
@@ -260,8 +340,14 @@ const DashboardPage: React.FC = () => {
             ⚡
           </div>
           <div className="metric-label">AVG RESPONSE</div>
-          <div className="metric-value">42ms</div>
-          <span className="metric-change positive">↓ 8ms</span>
+          <div className="metric-value">
+            {data.avgResponseTime !== undefined ? `${data.avgResponseTime}ms` : 'No data'}
+          </div>
+          {data.avgResponseTime !== undefined && (
+            <span className={`metric-change ${data.avgResponseTime < 100 ? 'positive' : 'warning'}`}>
+              {data.avgResponseTime < 100 ? 'Fast' : 'Moderate'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -271,14 +357,18 @@ const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 card">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Traffic Trends</h3>
-            <button className="btn btn-ghost">
+            <button 
+              onClick={() => navigate('/analytics')}
+              className="btn btn-ghost hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-1 rounded-lg transition-colors"
+            >
               View Details <ArrowUpRight className="inline h-3 w-3 ml-1" />
             </button>
           </div>
           <div className="h-64">
-            <Line 
-              data={trafficChartData}
-              options={{
+            {trafficChartData.labels.length > 0 ? (
+              <Line 
+                data={trafficChartData}
+                options={{
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
@@ -311,8 +401,16 @@ const DashboardPage: React.FC = () => {
                     }
                   }
                 }
-              }}
-            />
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-500 dark:text-gray-400">
+                  <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No traffic data available</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -321,7 +419,7 @@ const DashboardPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Attack Distribution</h3>
           </div>
-          {data.topAttackTypes.length > 0 ? (
+          {data.topAttackTypes && data.topAttackTypes.length > 0 ? (
             <>
               <div className="h-48">
                 <Doughnut 
@@ -338,7 +436,7 @@ const DashboardPage: React.FC = () => {
                 />
               </div>
               <div className="mt-4 space-y-2">
-                {data.topAttackTypes.slice(0, 3).map((attack, index) => (
+                {data.topAttackTypes && data.topAttackTypes.slice(0, 3).map((attack, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 rounded-full mr-2 ${
@@ -346,9 +444,9 @@ const DashboardPage: React.FC = () => {
                         index === 1 ? 'bg-amber-500' : 
                         'bg-blue-500'
                       }`} />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">{attack.type}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{attack.type || 'Unknown'}</span>
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{attack.count}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{attack.count || 0}</span>
                   </div>
                 ))}
               </div>
@@ -373,24 +471,24 @@ const DashboardPage: React.FC = () => {
             <Globe className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-3">
-            {data.topSourceIps.slice(0, 5).map((ip, index) => (
+            {data.topSourceIps && data.topSourceIps.length > 0 ? data.topSourceIps.slice(0, 5).map((ip, index) => (
               <div key={index} className="flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
                 <div className="flex items-center">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center mr-3">
                     <span className="text-xs font-bold text-gray-600 dark:text-gray-300">{index + 1}</span>
                   </div>
                   <div>
-                    <span className="text-sm font-mono text-gray-900 dark:text-gray-100">{ip.ip}</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">{'Unknown'}</span>
+                    <span className="text-sm font-mono text-gray-900 dark:text-gray-100">{ip.ip || 'N/A'}</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">Location unknown</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{ip.count}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{ip.count || 0}</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">requests</span>
                 </div>
               </div>
-            ))}
-            {data.topSourceIps.length === 0 && (
+            )) : null}
+            {(!data.topSourceIps || data.topSourceIps.length === 0) && (
               <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">No data available</p>
             )}
           </div>
@@ -403,7 +501,7 @@ const DashboardPage: React.FC = () => {
             <Clock className="h-5 w-5 text-gray-400" />
           </div>
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {data.recentEvents.slice(0, 10).map((event) => (
+            {data.recentEvents && data.recentEvents.length > 0 ? data.recentEvents.slice(0, 10).map((event) => (
               <div key={event.id} className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors">
                 <div className="flex items-center flex-1">
                   {event.blocked ? (
@@ -413,7 +511,7 @@ const DashboardPage: React.FC = () => {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {event.sourceIp}
+                      {event.sourceIp || 'Unknown IP'}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(event.timestamp).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' })}
@@ -426,8 +524,8 @@ const DashboardPage: React.FC = () => {
                   </span>
                 )}
               </div>
-            ))}
-            {data.recentEvents.length === 0 && (
+            )) : null}
+            {(!data.recentEvents || data.recentEvents.length === 0) && (
               <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">No recent events</p>
             )}
           </div>

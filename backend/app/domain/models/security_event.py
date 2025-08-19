@@ -44,6 +44,7 @@ class SecurityEvent(Base):
     target_website = Column(String(255), index=True)
     status_code = Column(Integer, nullable=False, index=True)
     user_agent = Column(String(1024))
+    response_time = Column(Integer)  # Response time in milliseconds
     
     # Security analysis
     attack_type = Column(String(50), index=True)

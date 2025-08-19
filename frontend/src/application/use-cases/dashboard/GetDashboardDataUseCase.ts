@@ -25,6 +25,19 @@ export interface DashboardData {
   topAttackTypes: Array<{ type: string; count: number }>;
   topSourceIps: Array<{ ip: string; count: number }>;
   riskScore: number;
+  systemHealth?: number;
+  avgResponseTime?: number;
+  changes?: {
+    total_requests_change: number;
+    blocked_requests_change: number;
+    attack_requests_change: number;
+  };
+  hourlyTrends?: Array<{
+    label: string;
+    total: number;
+    blocked: number;
+    attacks: number;
+  }>;
 }
 
 export class GetDashboardDataUseCase {
@@ -86,10 +99,10 @@ export class GetDashboardDataUseCase {
     
     return {
       stats: {
-        totalRequests: stats.totalEvents,
-        blockedRequests: stats.blockedEvents,
-        attackRequests: stats.attackEvents,
-        blockRate: stats.blockRate
+        totalRequests: stats.totalEvents || 0,
+        blockedRequests: stats.blockedEvents || 0,
+        attackRequests: stats.attackEvents || 0,
+        blockRate: stats.blockRate || 0
       },
       threatLevel,
       recentEvents: recentEvents.map(e => ({
@@ -99,9 +112,13 @@ export class GetDashboardDataUseCase {
         attackType: e.attackType,
         blocked: e.blocked
       })),
-      topAttackTypes: stats.topAttackTypes,
-      topSourceIps: stats.topSourceIps,
-      riskScore
+      topAttackTypes: stats.topAttackTypes || [],
+      topSourceIps: stats.topSourceIps || [],
+      riskScore,
+      systemHealth: stats.system_health,
+      avgResponseTime: stats.avg_response_time,
+      changes: stats.changes,
+      hourlyTrends: stats.hourly_trends
     };
   }
 }

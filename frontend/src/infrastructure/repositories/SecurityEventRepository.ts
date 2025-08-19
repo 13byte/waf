@@ -146,6 +146,13 @@ export class SecurityEventRepository implements ISecurityEventRepository {
         };
         threat_level: any;
         risk_score: number;
+        system_health?: number;
+        avg_response_time?: number;
+        changes?: {
+          total_requests_change: number;
+          blocked_requests_change: number;
+          attack_requests_change: number;
+        };
         time_range: string;
       }>('/dashboard/stats', params);
       
@@ -155,7 +162,11 @@ export class SecurityEventRepository implements ISecurityEventRepository {
         attackEvents: response.stats.attack_requests,
         blockRate: response.stats.block_rate,
         topAttackTypes: response.stats.top_attack_types || [],
-        topSourceIps: response.stats.top_source_ips || []
+        topSourceIps: response.stats.top_source_ips || [],
+        system_health: response.system_health,
+        avg_response_time: response.avg_response_time,
+        changes: response.changes,
+        hourly_trends: response.hourly_trends
       };
     } catch (error) {
       console.error('Failed to get dashboard stats:', error);
