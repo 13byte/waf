@@ -1,24 +1,18 @@
-# WAF Test Platform - Git Ignore Configuration
-# nginx + ModSecurity + CRS Testing Environment
+# WAF Security Platform - Git Ignore
 
-#################################################################
-# Environment Variables & Secrets
-#################################################################
+# Environment & Secrets
 .env
+.env.*
+!.env.example
 *.pem
 *.key
 *.crt
-config/secrets.json
 
-#################################################################
-# Python Backend (FastAPI)
-#################################################################
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
+*.so
 .Python
 build/
 develop-eggs/
@@ -37,215 +31,120 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# Virtual Environments
 venv/
+.venv/
 env/
 ENV/
-.venv/
 
-# pytest
+# Python Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.hypothesis/
+.nox/
+coverage.xml
+*.cover
 
-# mypy
+# Python Tools
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.ruff_cache/
 
-./backend/uploads/
-
-#################################################################
-# Node.js Frontend (React)
-#################################################################
-# Dependencies
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# React build artifacts
-build/
-dist/
-
-# Vite
+# Frontend Build
+frontend/dist/
+frontend/build/
 .vite/
-vite.config.js.timestamp-*
-
-# TypeScript build cache
 *.tsbuildinfo
 
-# Package manager locks (keep package-lock.json but ignore others)
-yarn.lock
-pnpm-lock.yaml
+# Frontend Cache
+.eslintcache
+.stylelintcache
+.parcel-cache/
 
-# React development
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-#################################################################
-# Docker & Containers
-#################################################################
-# Docker volumes and data
-**/mysql_data/
-**/postgres_data/
-**/redis_data/
-**/.env
-
-# Docker override files
+# Docker
 docker-compose.override.yml
-docker-compose.*.override.yml
 
-# Container logs
-docker-logs/
-*.dockerignore.bak
-
-#################################################################
-# Database & Storage
-#################################################################
-# MySQL data
-db/data/
-db/logs/
-db/mysql_data/
-
-# Backup files
-backups/*.sql
-backups/*.dump
-backups/*.bak
-*.backup
-
-# SQLite
+# Database
 *.db
 *.sqlite
 *.sqlite3
+mysql_data/
+postgres_data/
+redis_data/
 
-#################################################################
-# Application Logs & Runtime
-#################################################################
-# Log files
+# Logs
 logs/
 *.log
 *.log.*
-log/
 
-# CRS rules copied from container
+# WAF Specific
 nginx/crs-rules/
-# Custom rules (managed in container)
-nginx/custom-rules/
+nginx/custom-rules/*.conf
+nginx/custom-rules/*.rules
 
-# Runtime files
-*.pid
-*.sock
-**/frontend.pid
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
 
-# Temporary files
+# OS
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Temporary
 tmp/
 temp/
 .tmp/
 .cache/
+*.tmp
+*.bak
 
-#################################################################
-# IDE & Development Tools
-#################################################################
-# VS Code
-.vscode/
-*.code-workspace
-
-# PyCharm
-.idea/
-*.iml
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
-*.swp
-*.swo
-*~
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-
-#Claude
-
-CLAUDE.MD
-.claude
-
-#################################################################
-# Operating System
-#################################################################
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
-
-#################################################################
-# Security & Testing
-#################################################################
-# ModSecurity test results
+# Test Results
 test-results/
 test-reports/
-coverage/
 
-# Security scan results
-security-reports/
-vulnerability-scans/
-
-# JWT keys and tokens
+# Security
 jwt-keys/
 *.jwt
 access-tokens.txt
 
-#################################################################
-# Build & Deployment
-#################################################################
-# Build artifacts
+# Build Artifacts
 *.tar.gz
 *.zip
-*.rar
-*.7z
 
-# Deployment files
-deploy/
-staging/
+# Runtime
+*.pid
+*.sock
 
-# CI/CD
-.github/workflows/*.secrets
-.gitlab-ci.local.yml
+# Backups
+backups/*.sql
+backups/*.dump
+*.backup
+
+# Documentation Build
+docs/_build/
+docs/.doctrees/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# UV (Python package manager)
+.uv/
+uv.lock

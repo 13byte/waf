@@ -1,0 +1,23 @@
+# CRS Rules (copied from container)
+crs-rules/
+
+# Custom Rules (managed separately)
+custom-rules/*.conf
+custom-rules/*.rules
+!custom-rules/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# SSL Certificates
+*.pem
+*.crt
+*.key
+
+# Temporary
+*.tmp
+*.bak
+
+# OS
+.DS_Store
