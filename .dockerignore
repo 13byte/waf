@@ -3,6 +3,17 @@
 .gitignore
 .gitattributes
 
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+jenkins/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
 # Documentation
 *.md
 docs/
@@ -14,6 +25,7 @@ LICENSE
 *.swp
 *.swo
 *~
+*.sublime-*
 
 # OS
 .DS_Store
@@ -22,36 +34,80 @@ Thumbs.db
 # Logs
 *.log
 logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# Test
+# Testing
 test/
 tests/
+__tests__/
 coverage/
+.nyc_output/
 *.test.*
+*.spec.*
+jest.config.*
+.pytest_cache/
 
 # Build artifacts
 dist/
 build/
 *.egg-info/
+*.egg
+wheels/
+*.whl
 
 # Dependencies (should be installed in container)
 node_modules/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 venv/
 .venv/
+env/
+ENV/
 
 # Environment
 .env
 .env.*
+!.env.example
 
 # Temporary files
 *.tmp
 *.bak
 *.cache
+*.swp
 tmp/
+temp/
 
 # Data (should be mounted as volumes)
 data/
 *.db
 *.sqlite
+*.sqlite3
+
+# Scripts
+manage.sh
+*.sh
+
+# Frontend specific
+.parcel-cache/
+.next/
+.nuxt/
+.cache/
+.eslintcache
+.stylelintcache
+
+# Backend specific
+*.so
+*.dylib
+*.dll
+instance/
+.webassets-cache
+.scrapy
+celerybeat-schedule
+*.sage.py
+.ipynb_checkpoints
+profile_default/
+ipython_config.py

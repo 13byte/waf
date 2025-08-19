@@ -2,16 +2,20 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install uv
-RUN pip install uv
+# Install uv with pip cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install uv
 
-# Copy project configuration and source code
+# Copy only dependency files first for better layer caching
 COPY pyproject.toml .
+
+# Use uv to install dependencies with cache mount
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync
+
+# Copy source code after dependencies are installed
 COPY app/ ./app/
 COPY main.py .
-
-# Use uv to install dependencies from pyproject.toml
-RUN uv sync
 
 # Copy remaining files
 COPY . .

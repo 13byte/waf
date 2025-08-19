@@ -2,13 +2,14 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
+# Copy package files for dependency caching
+COPY package*.json ./
 
-# Install dependencies (using npm install instead of ci to handle package-lock.json updates)
-RUN npm install
+# Install dependencies with npm cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --cache /root/.npm || npm install --cache /root/.npm
 
-# Copy source code
+# Copy source code after dependencies are installed
 COPY . .
 
 # Build arguments for environment variables

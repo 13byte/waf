@@ -23,11 +23,15 @@ start_services() {
     
     cd "$PROJECT_DIR"
     
+    # Enable BuildKit for faster builds
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    
     echo "📋 Initializing custom rules directory..."
     mkdir -p ./nginx/custom-rules
     
-    echo "🔧 Building services..."
-    docker-compose -f "$COMPOSE_FILE" build
+    echo "🔧 Building services with BuildKit..."
+    docker-compose -f "$COMPOSE_FILE" build --parallel
     
     echo "📊 Starting database..."
     docker-compose -f "$COMPOSE_FILE" up -d database
@@ -240,6 +244,10 @@ build_services() {
     
     cd "$PROJECT_DIR"
     
+    # Enable BuildKit for faster builds
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    
     echo "⚛️ Installing React dependencies..."
     cd frontend
     if [ -f "package.json" ]; then
@@ -248,8 +256,8 @@ build_services() {
     fi
     cd ..
     
-    echo "🐳 Building all Docker services..."
-    docker-compose -f "$COMPOSE_FILE" build --no-cache
+    echo "🐳 Building all Docker services with BuildKit (parallel)..."
+    docker-compose -f "$COMPOSE_FILE" build --parallel
     
     echo "✅ Build completed!"
     echo "💡 Run './manage.sh start' to start all services"
