@@ -2,6 +2,8 @@ import re
 import json
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime
+from pydantic import AwareDatetime
+from zoneinfo import ZoneInfo
 import logging
 
 class AttackDetectionEngine:
@@ -364,15 +366,8 @@ class AttackDetectionEngine:
         try:
             # Format: "Mon Aug 11 09:19:10 2025"
             # ModSecurity logs are already in KST (Asia/Seoul)
-            from zoneinfo import ZoneInfo
             dt = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S %Y")
-            # Attach KST timezone info
+            # Attach KST timezone info to make it timezone-aware
             return dt.replace(tzinfo=ZoneInfo('Asia/Seoul'))
-        except ImportError:
-            # Fallback for older Python versions
-            import pytz
-            dt = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S %Y")
-            kst = pytz.timezone('Asia/Seoul')
-            return kst.localize(dt)
         except (ValueError, TypeError):
             return None

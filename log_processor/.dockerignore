@@ -1,34 +1,56 @@
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
 venv/
-.venv
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+.venv/
+env/
+ENV/
+
+# Logs
 *.log
-.git
-.gitignore
-.mypy_cache
-.pytest_cache
-.hypothesis
+logs/
+
+# Data & State
+data/
+*.state
+
+# Environment
 .env
-*.sqlite
-*.db
-.DS_Store
-.idea
-.vscode
+.env.*
+
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
-*~
-data/
-logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Testing
+.pytest_cache/
+tests/
+
+# Temporary
+*.tmp
+tmp/
+temp/
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Old requirements (using uv now)
+requirements.txt
