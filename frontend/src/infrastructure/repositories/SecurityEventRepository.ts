@@ -78,13 +78,14 @@ export class SecurityEventRepository implements ISecurityEventRepository {
       if (filter.blocked !== undefined) params.blocked_only = filter.blocked;
       if (filter.search) params.search = filter.search;
       if (filter.timeRange) {
-        // Convert to local timezone ISO string like SecurityEventsPage does
-        const toLocalISOString = (date: Date) => {
-          const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-          return localDate.toISOString();
+        // Convert to KST and format without milliseconds for FastAPI compatibility
+        const toKSTString = (date: Date) => {
+          // Add 9 hours for KST (UTC+9)
+          const kstDate = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+          return kstDate.toISOString().split('.')[0] + '+09:00';
         };
-        params.start_date = toLocalISOString(filter.timeRange.startDate);
-        params.end_date = toLocalISOString(filter.timeRange.endDate);
+        params.start_date = toKSTString(filter.timeRange.startDate);
+        params.end_date = toKSTString(filter.timeRange.endDate);
       }
     }
     

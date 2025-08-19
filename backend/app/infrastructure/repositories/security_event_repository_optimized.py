@@ -6,6 +6,7 @@ from sqlalchemy import func, and_, or_, desc, asc, select
 from sqlalchemy.sql import text
 from ...domain.models.security_event import SecurityEvent
 from ...domain.repositories.security_event_repository import SecurityEventRepository
+from ...infrastructure.timezone import get_kst_now
 
 class OptimizedSecurityEventRepository(SecurityEventRepository):
     def __init__(self, db: Session):
@@ -83,7 +84,7 @@ class OptimizedSecurityEventRepository(SecurityEventRepository):
     
     def get_stats(self, hours: int = 24) -> Dict[str, Any]:
         """Get statistics with single optimized query"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = get_kst_now() - timedelta(hours=hours)
         
         # Single query for all stats
         stats = self.db.query(
@@ -148,7 +149,7 @@ class OptimizedSecurityEventRepository(SecurityEventRepository):
     
     def get_threat_ips(self, threshold: int = 10, hours: int = 24) -> List[Dict[str, Any]]:
         """Get threatening IPs with optimized query"""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = get_kst_now() - timedelta(hours=hours)
         
         threat_ips = self.db.query(
             SecurityEvent.source_ip,
@@ -195,7 +196,7 @@ class OptimizedSecurityEventRepository(SecurityEventRepository):
     
     def cleanup_old_events(self, days: int = 30) -> int:
         """Delete old events with optimized query"""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = get_kst_now() - timedelta(days=days)
         
         # Use delete with filter for efficiency
         deleted = self.db.query(SecurityEvent).filter(

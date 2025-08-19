@@ -2,6 +2,7 @@
 from typing import Any, Optional, Dict
 from datetime import datetime, timedelta
 import asyncio
+from .timezone import get_kst_now
 import json
 
 class CacheManager:
@@ -16,7 +17,7 @@ class CacheManager:
         async with self._lock:
             if key in self._cache:
                 entry = self._cache[key]
-                if entry["expires_at"] > datetime.utcnow():
+                if entry["expires_at"] > get_kst_now():
                     return entry["value"]
                 else:
                     # Remove expired entry
@@ -26,7 +27,7 @@ class CacheManager:
     async def set(self, key: str, value: Any, ttl: int = 300) -> None:
         """Set value in cache with TTL in seconds"""
         async with self._lock:
-            expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+            expires_at = get_kst_now() + timedelta(seconds=ttl)
             self._cache[key] = {
                 "value": value,
                 "expires_at": expires_at
@@ -46,7 +47,7 @@ class CacheManager:
     async def cleanup_expired(self) -> None:
         """Remove expired entries"""
         async with self._lock:
-            now = datetime.utcnow()
+            now = get_kst_now()
             expired_keys = [
                 key for key, entry in self._cache.items()
                 if entry["expires_at"] <= now

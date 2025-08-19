@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+from ...infrastructure.timezone import get_kst_now
 
 Base = declarative_base()
 
@@ -25,7 +26,7 @@ class WafConfig(Base):
     custom_rules = Column(JSON, default=list)
     
     # Metadata
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=get_kst_now, onupdate=get_kst_now)
     updated_by = Column(String(100))
     
 class CustomRule(Base):
@@ -38,5 +39,5 @@ class CustomRule(Base):
     enabled = Column(Boolean, default=True)
     priority = Column(Integer, default=100)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_kst_now)
     created_by = Column(String(100))

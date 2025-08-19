@@ -11,6 +11,7 @@ from typing import Optional
 import os
 
 from app.infrastructure.database import get_db
+from app.infrastructure.timezone import get_kst_now
 from app.domain.models.models import User
 from app.infrastructure.auth import create_access_token
 from app.domain.models.enums import UserRole
@@ -93,7 +94,7 @@ async def google_auth(request: GoogleTokenRequest, db: Session = Depends(get_db)
                 is_oauth_user=True,
                 is_active=True,
                 role=UserRole.USER,
-                created_at=datetime.utcnow()
+                created_at=get_kst_now()
             )
             # OAuth users don't have passwords
             user.set_password(None)
@@ -111,7 +112,7 @@ async def google_auth(request: GoogleTokenRequest, db: Session = Depends(get_db)
             if name and not user.full_name:
                 user.full_name = name
             
-            user.last_login = datetime.utcnow()
+            user.last_login = get_kst_now()
             db.commit()
             db.refresh(user)
 

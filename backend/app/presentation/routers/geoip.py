@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 import os
+from ...infrastructure.timezone import get_kst_now
 import shutil
 from typing import Optional
 
@@ -89,7 +90,7 @@ async def upload_geoip_database(
                 buffer.write(content)
         
         # Update config file
-        config_data = f"{file.filename}\n{datetime.utcnow().isoformat()}"
+        config_data = f"{file.filename}\n{get_kst_now().isoformat()}"
         with open(GEOIP_CONFIG_FILE, 'w') as f:
             f.write(config_data)
         
@@ -101,7 +102,7 @@ async def upload_geoip_database(
             "message": "GeoIP database uploaded successfully",
             "filename": file.filename,
             "file_size": file_size,
-            "uploaded_at": datetime.utcnow().isoformat()
+            "uploaded_at": get_kst_now().isoformat()
         }
         
     except HTTPException:

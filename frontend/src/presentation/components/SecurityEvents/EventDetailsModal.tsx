@@ -1,6 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { X, Copy, CheckCircle } from 'lucide-react';
 import type { SecurityEvent, EventDetailsModalProps } from '../../../types';
+import { toKSTLocaleString } from '../../../utils/datetime';
 
 const EventDetailsModalComponent = memo<EventDetailsModalProps>(({ 
   event, 
@@ -70,7 +71,7 @@ const EventDetailsModalComponent = memo<EventDetailsModalProps>(({
               <div>
                 <label className="text-xs text-gray-500 dark:text-gray-400">Timestamp</label>
                 <p className="text-sm text-gray-900 dark:text-gray-100 mt-1">
-                  {new Date(event.timestamp).toLocaleString('ko-KR')}
+                  {toKSTLocaleString(event.timestamp)}
                 </p>
               </div>
               <div>

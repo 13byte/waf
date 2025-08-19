@@ -52,7 +52,15 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const error: any = new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorDetail = '';
+      try {
+        const errorBody = await response.json();
+        errorDetail = JSON.stringify(errorBody);
+        console.error('API Error Detail:', errorBody);
+      } catch (e) {
+        // Response might not be JSON
+      }
+      const error: any = new Error(`API Error: ${response.status} ${response.statusText}${errorDetail ? ` - ${errorDetail}` : ''}`);
       error.status = response.status;
       throw error;
     }

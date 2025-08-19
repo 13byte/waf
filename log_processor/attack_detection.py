@@ -360,9 +360,19 @@ class AttackDetectionEngine:
     
     @classmethod
     def _parse_timestamp(cls, timestamp_str: str) -> Optional[datetime]:
-        """Parse ModSecurity timestamp format"""
+        """Parse ModSecurity timestamp format and apply KST timezone"""
         try:
             # Format: "Mon Aug 11 09:19:10 2025"
-            return datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S %Y")
+            # ModSecurity logs are already in KST (Asia/Seoul)
+            from zoneinfo import ZoneInfo
+            dt = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S %Y")
+            # Attach KST timezone info
+            return dt.replace(tzinfo=ZoneInfo('Asia/Seoul'))
+        except ImportError:
+            # Fallback for older Python versions
+            import pytz
+            dt = datetime.strptime(timestamp_str, "%a %b %d %H:%M:%S %Y")
+            kst = pytz.timezone('Asia/Seoul')
+            return kst.localize(dt)
         except (ValueError, TypeError):
             return None
