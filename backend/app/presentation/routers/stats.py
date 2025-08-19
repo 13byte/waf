@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, Integer
+from pydantic import AwareDatetime
 
 from ...infrastructure.database import get_db
 from ...domain.models.security_event import SecurityEvent
@@ -14,8 +15,8 @@ router = APIRouter(prefix="/api/monitoring", tags=["Monitoring"])
 
 @router.get("/stats")
 async def get_monitoring_stats(
-    start_date: Optional[datetime] = Query(None),
-    end_date: Optional[datetime] = Query(None),
+    start_date: Optional[AwareDatetime] = Query(None),
+    end_date: Optional[AwareDatetime] = Query(None),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):

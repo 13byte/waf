@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from ...infrastructure.timezone import get_kst_now
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
+from pydantic import AwareDatetime
 import json
 import asyncio
 import csv
@@ -34,8 +35,8 @@ async def get_security_events(
     destination_ip: Optional[str] = Query(None, description="Filter by destination IP"),
     domain: Optional[str] = Query(None, description="Filter by domain/target website"),
     method: Optional[str] = Query(None, description="Filter by HTTP method"),
-    start_date: Optional[datetime] = Query(None, description="Start date"),
-    end_date: Optional[datetime] = Query(None, description="End date"),
+    start_date: Optional[AwareDatetime] = Query(None, description="Start date with timezone"),
+    end_date: Optional[AwareDatetime] = Query(None, description="End date with timezone"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):

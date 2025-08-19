@@ -6,19 +6,12 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install uv
 
-# Copy only dependency files first for better layer caching
-COPY pyproject.toml .
+# Copy all source code first (uv needs app directory for package info)
+COPY . .
 
 # Use uv to install dependencies with cache mount
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
-
-# Copy source code after dependencies are installed
-COPY app/ ./app/
-COPY main.py .
-
-# Copy remaining files
-COPY . .
 
 EXPOSE 8000
 

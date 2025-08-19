@@ -5,6 +5,7 @@ from ...infrastructure.timezone import get_kst_now
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, case, distinct, text
+from pydantic import AwareDatetime
 import json
 
 from ...infrastructure.database import get_db
@@ -16,8 +17,8 @@ router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
 @router.get("/aggregated-stats")
 async def get_aggregated_stats(
-    start_date: Optional[datetime] = Query(None),
-    end_date: Optional[datetime] = Query(None),
+    start_date: Optional[AwareDatetime] = Query(None),
+    end_date: Optional[AwareDatetime] = Query(None),
     period: str = Query("daily", description="Aggregation period: hourly or daily"),
     use_cache: bool = Query(True),
     db: Session = Depends(get_db),
@@ -173,10 +174,10 @@ async def get_aggregated_stats(
 
 @router.get("/comparison")
 async def get_comparison_stats(
-    period1_start: datetime = Query(..., description="Start of first period"),
-    period1_end: datetime = Query(..., description="End of first period"),
-    period2_start: datetime = Query(..., description="Start of second period"),
-    period2_end: datetime = Query(..., description="End of second period"),
+    period1_start: AwareDatetime = Query(..., description="Start of first period"),
+    period1_end: AwareDatetime = Query(..., description="End of first period"),
+    period2_start: AwareDatetime = Query(..., description="Start of second period"),
+    period2_end: AwareDatetime = Query(..., description="End of second period"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -263,8 +264,8 @@ async def get_comparison_stats(
 async def get_drill_down_data(
     chart_type: str,
     value: str = Query(..., description="Value to drill down on"),
-    start_date: Optional[datetime] = Query(None),
-    end_date: Optional[datetime] = Query(None),
+    start_date: Optional[AwareDatetime] = Query(None),
+    end_date: Optional[AwareDatetime] = Query(None),
     limit: int = Query(100, le=1000),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
