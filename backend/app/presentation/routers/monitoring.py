@@ -15,7 +15,6 @@ from ...infrastructure.database import get_db
 from ...infrastructure.repositories.security_event_repository import SecurityEventRepository
 from ...domain.services.security_analysis_service import SecurityAnalysisService
 from ..dependencies import get_current_user
-from ...infrastructure.cache import cache_manager
 
 router = APIRouter(prefix="/api/security-events", tags=["Security Events"])
 
@@ -223,13 +222,7 @@ async def get_event_stats(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Get event statistics with caching"""
-    
-    # Check cache first
-    cache_key = f"event_stats_{time_range}"
-    cached = await cache_manager.get(cache_key)
-    if cached:
-        return cached
+    """Get event statistics"""
     
     # Calculate date range
     end_date = get_kst_now()
@@ -246,9 +239,6 @@ async def get_event_stats(
     
     repo = SecurityEventRepository(db)
     stats = await repo.get_stats(start_date, end_date)
-    
-    # Cache for 5 minutes
-    await cache_manager.set(cache_key, stats, ttl=300)
     
     return stats
 

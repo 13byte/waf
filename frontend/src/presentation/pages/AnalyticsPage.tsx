@@ -49,9 +49,6 @@ const AnalyticsPage: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState(30000);
   const [isDarkMode, setIsDarkMode] = useState(false);
   
-  // Date range from database
-  const [dateRange, setDateRange] = useState({ min: '', max: '' });
-  
   // Check for dark mode on mount and when theme changes
   useEffect(() => {
     const checkDarkMode = () => {
@@ -110,39 +107,12 @@ const AnalyticsPage: React.FC = () => {
     fetchAnalytics();
   }, [presetRange, customStartDate, customEndDate]);
   
-  // Fetch initial date range on mount
-  useEffect(() => {
-    fetchDateRange();
-  }, []);
-
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(fetchAnalytics, refreshInterval);
       return () => clearInterval(interval);
     }
   }, [autoRefresh, refreshInterval]);
-
-  const fetchDateRange = async () => {
-    try {
-      // ApiClient automatically handles token
-      // Fetch a large range to get the actual data bounds
-      const response = await apiClient.get<AnalyticsData>('/monitoring/stats', {
-        start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        end_date: new Date().toISOString()
-      });
-      
-      if (response && response.hourly_trends && response.hourly_trends.length > 0) {
-        const trends = response.hourly_trends;
-        const dates = trends.map((t: any) => new Date(t.hour).getTime());
-        setDateRange({
-          min: new Date(Math.min(...dates)).toISOString(),
-          max: new Date(Math.max(...dates)).toISOString()
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch date range:', error);
-    }
-  };
 
   const fetchAnalytics = async () => {
     try {
@@ -168,9 +138,10 @@ const AnalyticsPage: React.FC = () => {
         }
       }
 
-      const response = await apiClient.get<any>('/monitoring/stats', {
+      const response = await apiClient.get<any>('/analytics/stats', {
         start_date: startDate.toISOString(),
-        end_date: endDate.toISOString()
+        end_date: endDate.toISOString(),
+        period: 'hourly'
       });
       
       if (response) {
@@ -181,8 +152,8 @@ const AnalyticsPage: React.FC = () => {
           attack_requests: response.summary?.attack_requests || 0,
           block_rate: response.summary?.block_rate || 0,
           top_attack_types: response.attack_types || [],
-          top_source_ips: response.top_attacking_ips || [],
-          hourly_trends: response.hourly_trends || [],
+          top_source_ips: response.top_ips || [],
+          hourly_trends: response.hourly_stats || [],
           severity_distribution: response.severity_distribution || [],
           country_stats: response.country_stats || [],
           method_stats: response.method_stats || [],
@@ -192,10 +163,11 @@ const AnalyticsPage: React.FC = () => {
         // Format hourly trends if they exist
         if (processedData.hourly_trends && processedData.hourly_trends.length > 0) {
           processedData.hourly_trends = processedData.hourly_trends.map((trend: any) => ({
-            hour: formatHourLabel(trend.hour),
-            total: trend.total || 0,
-            blocked: trend.blocked || 0,
-            attacks: trend.attacks || 0
+            hour: trend.hour,  // Keep original ISO string for data
+            hourLabel: formatHourLabel(trend.hour),  // Add formatted label for display
+            total: trend.total_requests || 0,
+            blocked: trend.blocked_requests || 0,
+            attacks: trend.attack_requests || 0
           }));
         }
 
@@ -223,18 +195,18 @@ const AnalyticsPage: React.FC = () => {
       const date = new Date(hour);
       // For 1 hour range, show time with minutes
       if (presetRange === '1h') {
-        return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' });
       }
       // For 24 hour range, show hour only
       if (presetRange === '24h') {
-        return date.toLocaleTimeString('ko-KR', { hour: '2-digit' });
+        return date.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit' });
       }
       // For 7 day range, show day and hour
       if (presetRange === '7d') {
-        return date.toLocaleDateString('ko-KR', { day: 'numeric', hour: '2-digit' });
+        return date.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', day: 'numeric', hour: '2-digit' });
       }
       // For monthly data, show date
-      return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' });
     }
     return hour;
   };
@@ -381,7 +353,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
               selectsStart
               startDate={customStartDate}
               endDate={customEndDate}
-              minDate={dateRange.min ? new Date(dateRange.min) : undefined}
+              minDate={undefined}
               maxDate={customEndDate || new Date()}
               dateFormat="yyyy-MM-dd"
               locale={ko}
@@ -401,7 +373,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
               selectsEnd
               startDate={customStartDate}
               endDate={customEndDate}
-              minDate={customStartDate || (dateRange.min ? new Date(dateRange.min) : undefined)}
+              minDate={customStartDate || undefined}
               maxDate={new Date()}
               dateFormat="yyyy-MM-dd"
               locale={ko}
@@ -519,7 +491,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis 
-                      dataKey="hour" 
+                      dataKey="hourLabel" 
                       stroke={chartColors.text}
                       tick={{ fontSize: 12, fill: chartColors.text }}
                       angle={-45}
@@ -604,14 +576,14 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, type, count }) => {
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius + 30; // 라벨을 차트 밖으로 이동
                           const angle = midAngle ?? 0;
                           const x = cx + radius * Math.cos(-angle * RADIAN);
                           const y = cy + radius * Math.sin(-angle * RADIAN);
                           const total = stats.top_attack_types.reduce((sum, item) => sum + (item.count || 0), 0);
-                          const percentValue = total > 0 ? ((count || 0) / total * 100).toFixed(0) : '0';
+                          const percentValue = total > 0 ? ((payload?.count || 0) / total * 100).toFixed(0) : '0';
                           
                           // 5% 미만은 라벨 표시 안함
                           if (parseInt(percentValue) < 5) return null;
@@ -626,7 +598,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                               fontSize="11"
                               fontWeight="400"
                             >
-                              {`${type || 'Unknown'} ${percentValue}%`}
+                              {`${payload?.type || 'Unknown'} ${percentValue}%`}
                             </text>
                           );
                         }}
@@ -866,14 +838,14 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, code, count }) => {
+                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, payload }) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius + 30; // 라벨을 차트 밖으로 이동
                           const angle = midAngle ?? 0;
                           const x = cx + radius * Math.cos(-angle * RADIAN);
                           const y = cy + radius * Math.sin(-angle * RADIAN);
                           const total = stats.response_codes?.reduce((sum, item) => sum + (item.count || 0), 0) || 0;
-                          const percentValue = total > 0 ? ((count || 0) / total * 100).toFixed(0) : '0';
+                          const percentValue = total > 0 ? ((payload?.count || 0) / total * 100).toFixed(0) : '0';
                           
                           // 5% 미만은 라벨 표시 안함
                           if (parseInt(percentValue) < 5) return null;
@@ -888,7 +860,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                               fontSize="11"
                               fontWeight="400"
                             >
-                              {`${code || 'Unknown'} ${percentValue}%`}
+                              {`${payload?.code || 'Unknown'} ${percentValue}%`}
                             </text>
                           );
                         }}

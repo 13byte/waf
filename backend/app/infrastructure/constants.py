@@ -24,14 +24,6 @@ DEFAULT_BACKEND_PORT = 8000
 BACKEND_HOST = os.getenv("BACKEND_HOST", DEFAULT_BACKEND_HOST)
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", DEFAULT_BACKEND_PORT))
 
-# ============================================
-# Cache Configuration
-# ============================================
-DEFAULT_CACHE_TTL = 300  # 5 minutes
-DEFAULT_CACHE_CLEANUP_INTERVAL = 600  # 10 minutes
-
-CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL))
-CACHE_CLEANUP_INTERVAL = int(os.getenv("CACHE_CLEANUP_INTERVAL", DEFAULT_CACHE_CLEANUP_INTERVAL))
 
 # ============================================
 # Security Thresholds

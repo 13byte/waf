@@ -416,7 +416,7 @@ const DashboardPage: React.FC = () => {
                       {event.sourceIp}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(event.timestamp).toLocaleTimeString()}
+                      {new Date(event.timestamp).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' })}
                     </p>
                   </div>
                 </div>

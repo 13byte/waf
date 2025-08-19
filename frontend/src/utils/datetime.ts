@@ -24,7 +24,12 @@ export const toKSTLocaleString = (date: Date | string): string => {
  */
 export const toKSTTimeString = (date: Date | string): string => {
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' });
+  return d.toLocaleTimeString('ko-KR', { 
+    timeZone: 'Asia/Seoul',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 };
 
 /**

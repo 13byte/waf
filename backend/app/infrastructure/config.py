@@ -4,7 +4,6 @@ import os
 import secrets
 from .constants import (
     MAX_UPLOAD_SIZE,
-    CACHE_TTL_SECONDS,
     BACKEND_HOST,
     BACKEND_PORT
 )
@@ -30,9 +29,6 @@ class Settings(BaseSettings):
     upload_dir: str = os.getenv("UPLOAD_DIR", "/app/uploads")
     max_file_size: int = MAX_UPLOAD_SIZE
     allowed_extensions: str = "jpg,jpeg,png,gif,pdf,txt,doc,docx,exe,bat,sh,php,asp,jsp"
-    
-    # Cache settings
-    cache_ttl: int = CACHE_TTL_SECONDS
     
     # CORS settings
     cors_origins: str = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:3000,http://localhost:5173")

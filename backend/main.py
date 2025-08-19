@@ -20,7 +20,6 @@ from app.presentation.routers import (
 )
 import os
 import asyncio
-from app.infrastructure.cache import cache_cleanup_task
 
 app = FastAPI(
     title="WAF Security Operations Center API",
@@ -107,15 +106,13 @@ async def health_check():
     return {
         "status": "healthy",
         "database": db_status,
-        "cache": "active",
         "version": settings.api_version
     }
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize background tasks on startup"""
-    # Start cache cleanup task
-    asyncio.create_task(cache_cleanup_task())
+    pass
 
 if __name__ == "__main__":
     import uvicorn

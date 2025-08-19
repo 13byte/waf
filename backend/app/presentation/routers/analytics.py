@@ -1,7 +1,7 @@
 # Real-time analytics endpoints - calculates directly from security_events
 from fastapi import APIRouter, Depends, Query, HTTPException
 from datetime import datetime, timedelta
-from ...infrastructure.timezone import get_kst_now
+from ...infrastructure.timezone import get_kst_now, KST
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, case, distinct, text
@@ -11,16 +11,14 @@ import json
 from ...infrastructure.database import get_db
 from ...domain.models.security_event import SecurityEvent
 from ..dependencies import get_current_user
-from ...infrastructure.cache import cache_manager
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
-@router.get("/aggregated-stats")
+@router.get("/stats")
 async def get_aggregated_stats(
     start_date: Optional[AwareDatetime] = Query(None),
     end_date: Optional[AwareDatetime] = Query(None),
     period: str = Query("daily", description="Aggregation period: hourly or daily"),
-    use_cache: bool = Query(True),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -31,14 +29,6 @@ async def get_aggregated_stats(
         end_date = get_kst_now()
     if not start_date:
         start_date = end_date - timedelta(days=7)
-    
-    # Cache key based on parameters
-    cache_key = f"analytics_realtime_{start_date.date()}_{end_date.date()}_{period}"
-    
-    if use_cache:
-        cached = await cache_manager.get(cache_key)
-        if cached:
-            return cached
     
     try:
         # Calculate summary statistics
@@ -57,6 +47,7 @@ async def get_aggregated_stats(
         
         # Calculate time-based statistics
         if period == "hourly":
+            # Use func.date_trunc or custom formatting to maintain timezone awareness
             time_format = func.date_format(SecurityEvent.timestamp, '%Y-%m-%d %H:00:00')
         else:  # daily
             time_format = func.date(SecurityEvent.timestamp)
@@ -97,7 +88,7 @@ async def get_aggregated_stats(
             SecurityEvent.attack_type.isnot(None)
         ).group_by(SecurityEvent.attack_type).order_by(func.count(SecurityEvent.id).desc()).limit(10).all()
         
-        # Get top attacking IPs
+        # Get top IPs by request count
         top_ips = db.query(
             SecurityEvent.source_ip,
             func.count(SecurityEvent.id).label('total_requests'),
@@ -106,11 +97,72 @@ async def get_aggregated_stats(
             func.count(distinct(SecurityEvent.attack_type)).label('unique_attack_types')
         ).filter(
             SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date,
-            SecurityEvent.is_attack == True
+            SecurityEvent.timestamp <= end_date
         ).group_by(SecurityEvent.source_ip).order_by(
-            func.sum(case((SecurityEvent.is_attack == True, 1), else_=0)).desc()
+            func.count(SecurityEvent.id).desc()
         ).limit(20).all()
+        
+        # Get severity distribution
+        severity_dist = db.query(
+            SecurityEvent.severity,
+            func.count(SecurityEvent.id).label('count')
+        ).filter(
+            SecurityEvent.timestamp >= start_date,
+            SecurityEvent.timestamp <= end_date,
+            SecurityEvent.severity.isnot(None)
+        ).group_by(SecurityEvent.severity).all()
+        
+        # Get HTTP method statistics
+        method_stats = db.query(
+            SecurityEvent.method,
+            func.count(SecurityEvent.id).label('count')
+        ).filter(
+            SecurityEvent.timestamp >= start_date,
+            SecurityEvent.timestamp <= end_date
+        ).group_by(SecurityEvent.method).order_by(func.count(SecurityEvent.id).desc()).all()
+        
+        # Get response code statistics
+        response_codes = db.query(
+            SecurityEvent.status_code,
+            func.count(SecurityEvent.id).label('count')
+        ).filter(
+            SecurityEvent.timestamp >= start_date,
+            SecurityEvent.timestamp <= end_date
+        ).group_by(SecurityEvent.status_code).order_by(func.count(SecurityEvent.id).desc()).all()
+        
+        # Get country statistics using GeoIP
+        from ...services.geoip_service import geoip_service
+        
+        # Group by IP first
+        ip_stats = db.query(
+            SecurityEvent.source_ip,
+            func.count(SecurityEvent.id).label('requests'),
+            func.sum(case((SecurityEvent.is_attack == True, 1), else_=0)).label('attacks')
+        ).filter(
+            SecurityEvent.timestamp >= start_date,
+            SecurityEvent.timestamp <= end_date
+        ).group_by(SecurityEvent.source_ip).all()
+        
+        # Aggregate by country
+        country_dict = {}
+        for ip_stat in ip_stats:
+            geo_data = geoip_service.get_country_info(ip_stat.source_ip)
+            country = geo_data.get('country', 'Unknown') if geo_data else 'Unknown'
+            
+            if country not in country_dict:
+                country_dict[country] = {'requests': 0, 'attacks': 0}
+            
+            country_dict[country]['requests'] += ip_stat.requests
+            country_dict[country]['attacks'] += ip_stat.attacks or 0
+        
+        country_stats = [
+            {
+                'country': country,
+                'requests': stats['requests'],
+                'attacks': stats['attacks']
+            }
+            for country, stats in sorted(country_dict.items(), key=lambda x: x[1]['requests'], reverse=True)[:20]
+        ]
         
         # Build response
         total_requests = summary_stats.total_requests or 0
@@ -129,7 +181,13 @@ async def get_aggregated_stats(
             },
             f"{period}_stats": [
                 {
-                    "date" if period == "daily" else "hour": stat.period.isoformat() if hasattr(stat.period, 'isoformat') else str(stat.period),
+                    "date" if period == "daily" else "hour": (
+                        # For hourly stats, MySQL DATE_FORMAT returns KST time as string
+                        # We need to properly parse and add timezone info
+                        datetime.strptime(str(stat.period), '%Y-%m-%d %H:%M:%S').replace(tzinfo=KST).isoformat()
+                        if period == "hourly" and isinstance(stat.period, str) and 'T' not in str(stat.period)
+                        else (stat.period.isoformat() if hasattr(stat.period, 'isoformat') else str(stat.period))
+                    ),
                     "total_requests": stat.total_requests,
                     "blocked_requests": stat.blocked_requests,
                     "attack_requests": stat.attack_requests,
@@ -160,12 +218,30 @@ async def get_aggregated_stats(
                     "threat_score": (float(ip.attack_requests) * 10.0 / float(ip.total_requests)) if ip.total_requests > 0 else 0
                 }
                 for ip in top_ips
-            ]
+            ],
+            "severity_distribution": [
+                {
+                    "severity": sev.severity,
+                    "count": sev.count
+                }
+                for sev in severity_dist
+            ],
+            "method_stats": [
+                {
+                    "method": method.method,
+                    "count": method.count
+                }
+                for method in method_stats
+            ],
+            "response_codes": [
+                {
+                    "code": str(code.status_code),
+                    "count": code.count
+                }
+                for code in response_codes
+            ],
+            "country_stats": country_stats
         }
-        
-        # Cache for 1 minute for performance
-        if use_cache:
-            await cache_manager.set(cache_key, result, ttl=60)
         
         return result
         

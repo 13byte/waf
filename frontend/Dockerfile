@@ -1,5 +1,12 @@
 FROM node:18-alpine
 
+# Install tzdata for timezone support
+RUN apk add --no-cache tzdata
+
+# Set timezone to Asia/Seoul
+ENV TZ=Asia/Seoul
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 WORKDIR /app
 
 # Copy package files for dependency caching
