@@ -1,7 +1,7 @@
 # Real-time analytics endpoints - calculates directly from security_events
 from fastapi import APIRouter, Depends, Query, HTTPException
 from datetime import datetime, timedelta
-from ...infrastructure.timezone import get_kst_now, KST
+from ...infrastructure.timezone import get_kst_now, get_kst_time, KST
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, case, distinct, text
@@ -18,17 +18,23 @@ router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 async def get_aggregated_stats(
     start_date: Optional[AwareDatetime] = Query(None),
     end_date: Optional[AwareDatetime] = Query(None),
-    period: str = Query("daily", description="Aggregation period: hourly or daily"),
+    period: str = Query("daily", description="Aggregation period: 5min, hourly, 6hour, or daily"),
+    aggregation: str = Query(None, description="Override aggregation period"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """Get aggregated statistics calculated in real-time from security_events"""
     
-    # Default to last 7 days if no dates provided
+    # Default to last 30 days if no dates provided
     if not end_date:
         end_date = get_kst_now()
     if not start_date:
-        start_date = end_date - timedelta(days=7)
+        start_date = end_date - timedelta(days=30)
+    
+    # Convert timezone-aware datetime to KST for DB comparison
+    # DB stores timestamps in KST without timezone info
+    start_date_kst = get_kst_time(start_date)
+    end_date_kst = get_kst_time(end_date)
     
     try:
         # Calculate summary statistics
@@ -41,15 +47,33 @@ async def get_aggregated_stats(
             func.avg(SecurityEvent.anomaly_score).label('avg_anomaly_score'),
             func.max(SecurityEvent.anomaly_score).label('max_anomaly_score')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).first()
         
-        # Calculate time-based statistics
-        if period == "hourly":
-            # Use func.date_trunc or custom formatting to maintain timezone awareness
+        # Calculate time-based statistics with flexible aggregation
+        # Use aggregation parameter if provided, otherwise use period
+        agg_period = aggregation or period
+        
+        if agg_period == "5min":
+            # Group by 5-minute intervals
+            time_format = func.concat(
+                func.date_format(SecurityEvent.timestamp, '%Y-%m-%d %H:'),
+                func.lpad(func.floor(func.minute(SecurityEvent.timestamp) / 5) * 5, 2, '0'),
+                ':00'
+            )
+        elif agg_period == "hourly":
+            # Group by hour
             time_format = func.date_format(SecurityEvent.timestamp, '%Y-%m-%d %H:00:00')
+        elif agg_period == "6hour":
+            # Group by 6-hour intervals
+            time_format = func.concat(
+                func.date_format(SecurityEvent.timestamp, '%Y-%m-%d '),
+                func.lpad(func.floor(func.hour(SecurityEvent.timestamp) / 6) * 6, 2, '0'),
+                ':00:00'
+            )
         else:  # daily
+            # Group by date
             time_format = func.date(SecurityEvent.timestamp)
         
         time_stats = db.query(
@@ -64,8 +88,8 @@ async def get_aggregated_stats(
             func.sum(case((SecurityEvent.severity == 'LOW', 1), else_=0)).label('low_events'),
             func.avg(SecurityEvent.anomaly_score).label('avg_anomaly_score')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).group_by(time_format).order_by(time_format).all()
         
         # Get attack type distribution
@@ -83,8 +107,8 @@ async def get_aggregated_stats(
                 )
             ).label('avg_severity')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date,
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None),
             SecurityEvent.attack_type.isnot(None)
         ).group_by(SecurityEvent.attack_type).order_by(func.count(SecurityEvent.id).desc()).limit(10).all()
         
@@ -96,8 +120,8 @@ async def get_aggregated_stats(
             func.sum(case((SecurityEvent.is_blocked == True, 1), else_=0)).label('blocked_requests'),
             func.count(distinct(SecurityEvent.attack_type)).label('unique_attack_types')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).group_by(SecurityEvent.source_ip).order_by(
             func.count(SecurityEvent.id).desc()
         ).limit(20).all()
@@ -107,8 +131,8 @@ async def get_aggregated_stats(
             SecurityEvent.severity,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date,
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None),
             SecurityEvent.severity.isnot(None)
         ).group_by(SecurityEvent.severity).all()
         
@@ -117,8 +141,8 @@ async def get_aggregated_stats(
             SecurityEvent.method,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).group_by(SecurityEvent.method).order_by(func.count(SecurityEvent.id).desc()).all()
         
         # Get response code statistics
@@ -126,8 +150,8 @@ async def get_aggregated_stats(
             SecurityEvent.status_code,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).group_by(SecurityEvent.status_code).order_by(func.count(SecurityEvent.id).desc()).all()
         
         # Get country statistics using GeoIP
@@ -139,8 +163,8 @@ async def get_aggregated_stats(
             func.count(SecurityEvent.id).label('requests'),
             func.sum(case((SecurityEvent.is_attack == True, 1), else_=0)).label('attacks')
         ).filter(
-            SecurityEvent.timestamp >= start_date,
-            SecurityEvent.timestamp <= end_date
+            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
         ).group_by(SecurityEvent.source_ip).all()
         
         # Aggregate by country
@@ -179,14 +203,16 @@ async def get_aggregated_stats(
                 "unique_ips": summary_stats.unique_ips or 0,
                 "unique_attack_types": summary_stats.unique_attack_types or 0
             },
-            f"{period}_stats": [
+            f"{('daily' if agg_period == 'daily' else 'hourly')}_stats": [
                 {
-                    "date" if period == "daily" else "hour": (
-                        # For hourly stats, MySQL DATE_FORMAT returns KST time as string
-                        # We need to properly parse and add timezone info
-                        datetime.strptime(str(stat.period), '%Y-%m-%d %H:%M:%S').replace(tzinfo=KST).isoformat()
-                        if period == "hourly" and isinstance(stat.period, str) and 'T' not in str(stat.period)
-                        else (stat.period.isoformat() if hasattr(stat.period, 'isoformat') else str(stat.period))
+                    "date" if agg_period == "daily" else "hour": (
+                        # Handle different date formats
+                        str(stat.period) if agg_period == "daily"
+                        else (
+                            datetime.strptime(str(stat.period), '%Y-%m-%d %H:%M:%S').replace(tzinfo=KST).isoformat()
+                            if isinstance(stat.period, str) and ':' in str(stat.period)
+                            else str(stat.period)
+                        )
                     ),
                     "total_requests": stat.total_requests,
                     "blocked_requests": stat.blocked_requests,

@@ -33,24 +33,56 @@ export class GetDashboardDataUseCase {
     private securityAnalysisService: SecurityAnalysisService
   ) {}
 
+  private calculateThreatLevelFromStats(stats: any): string {
+    const attackRate = stats.totalEvents > 0 ? (stats.attackEvents / stats.totalEvents) * 100 : 0;
+    if (attackRate > 50) return 'CRITICAL';
+    if (attackRate > 30) return 'HIGH';
+    if (attackRate > 10) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  private generateThreatReasons(stats: any): string[] {
+    const reasons = [];
+    const attackRate = stats.totalEvents > 0 ? (stats.attackEvents / stats.totalEvents) * 100 : 0;
+    
+    if (attackRate > 30) {
+      reasons.push(`High attack rate: ${attackRate.toFixed(1)}%`);
+    }
+    if (stats.blockRate > 20) {
+      reasons.push(`Elevated block rate: ${stats.blockRate.toFixed(1)}%`);
+    }
+    if (stats.topAttackTypes?.length > 3) {
+      reasons.push(`Multiple attack types detected: ${stats.topAttackTypes.length}`);
+    }
+    
+    return reasons.length > 0 ? reasons : ['Normal traffic patterns'];
+  }
+
+  private calculateSimpleRiskScore(stats: any): number {
+    const attackRate = stats.totalEvents > 0 ? (stats.attackEvents / stats.totalEvents) * 100 : 0;
+    const blockRate = stats.blockRate || 0;
+    
+    // Simple weighted average
+    return Math.min(100, Math.round((attackRate * 0.6) + (blockRate * 0.4)));
+  }
+
   async execute(timeRange?: TimeRange): Promise<DashboardData> {
-    // Get stats
+    // Get aggregated stats directly from backend - no need to fetch individual events
     const stats = await this.securityEventRepo.getStats(timeRange);
     
-    // Get recent events
+    // Get recent events for display only
     const recentEvents = await this.securityEventRepo.getRecentEvents(10);
     
-    // Get all events for analysis
-    const { events } = await this.securityEventRepo.getAll(
-      timeRange ? { timeRange } : undefined,
-      { page: 1, limit: 1000 }
-    );
+    // Use pre-calculated threat level and risk score from stats
+    // Backend should provide these based on DB aggregation
+    const threatLevel = {
+      level: this.calculateThreatLevelFromStats(stats),
+      score: stats.blockRate || 0,
+      reasons: this.generateThreatReasons(stats)
+    };
     
-    // Analyze threat level
-    const threatLevel = this.securityAnalysisService.analyzeThreatLevel(events);
-    
-    // Calculate risk score
-    const riskScore = this.securityAnalysisService.calculateRiskScore(events);
+    // Risk score should come from backend stats
+    const riskScore = this.calculateSimpleRiskScore(stats);
     
     return {
       stats: {

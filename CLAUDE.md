@@ -8,6 +8,12 @@ WAF Security Operations Center - A real-time web application firewall monitoring
 
 ## Recent Updates
 
+### Performance Optimization (August 2025)
+- Dashboard and Analytics now use DB aggregation instead of fetching individual events
+- Removed 1000 event limit issues by using pre-calculated statistics
+- Added `calculate_threat_level_from_stats()` for efficient threat analysis
+- Frontend types updated to handle both `count` and `total_requests` fields from different API endpoints
+
 ### CRS Rules Viewer (August 2025)
 - Added CRS (Core Rule Set) rules viewer in dashboard
 - Real-time rule statistics: 681 total rules, 307 critical/error rules  

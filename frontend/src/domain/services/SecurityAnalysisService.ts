@@ -16,6 +16,11 @@ export interface AttackPattern {
   sourceIps: string[];
 }
 
+/**
+ * Security analysis service for client-side analysis of security events.
+ * Note: For dashboard statistics, prefer using pre-aggregated data from backend
+ * to avoid fetching large amounts of individual events.
+ */
 export class SecurityAnalysisService {
   // Helper functions for SecurityEvent interface
   private isAttack(event: SecurityEvent): boolean {
@@ -36,6 +41,10 @@ export class SecurityAnalysisService {
     return scores[event.severity];
   }
   
+  /**
+   * Analyze threat level from individual events.
+   * @deprecated Use backend aggregated statistics for better performance
+   */
   analyzeThreatLevel(events: SecurityEvent[]): ThreatLevel {
     if (events.length === 0) {
       return { level: 'low', score: 0, reasons: [] };
@@ -181,6 +190,10 @@ export class SecurityAnalysisService {
       .sort((a, b) => b.threatScore - a.threatScore);
   }
 
+  /**
+   * Calculate risk score from individual events.
+   * @deprecated Use backend aggregated statistics for better performance
+   */
   calculateRiskScore(events: SecurityEvent[]): number {
     if (events.length === 0) return 0;
 

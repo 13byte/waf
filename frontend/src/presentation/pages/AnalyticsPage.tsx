@@ -6,7 +6,7 @@ import '../../styles/datepicker.css';
 import { ko } from 'date-fns/locale';
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, 
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
+  ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
 import { 
   BarChart3, TrendingUp, Calendar, Download, Shield, 
@@ -24,7 +24,7 @@ interface AnalyticsData {
   attack_requests: number;
   block_rate: number;
   top_attack_types: Array<{ type: string; count: number }>;
-  top_source_ips: Array<{ ip: string; count: number; country?: string }>;
+  top_source_ips: Array<{ ip: string; count?: number; total_requests?: number; attack_requests?: number; blocked_requests?: number; threat_score?: number; country?: string }>;
   hourly_trends?: Array<{ hour: string; total: number; blocked: number; attacks: number }>;
   severity_distribution?: Array<{ severity?: string; name?: string; count?: number; value?: number }>;
   country_stats?: Array<{ country: string; requests: number; attacks: number }>;
@@ -35,12 +35,13 @@ interface AnalyticsData {
 const AnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<AnalyticsData | null>(null);
+  const [prevStats, setPrevStats] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   
   // Date range states
   const [dateRangeType, setDateRangeType] = useState<'preset' | 'custom'>('preset');
-  const [presetRange, setPresetRange] = useState('7d');
+  const [presetRange, setPresetRange] = useState('30d');
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   
@@ -127,25 +128,65 @@ const AnalyticsPage: React.FC = () => {
         endDate = customEndDate;
       } else {
         // Calculate start date based on preset range
-        if (presetRange === '1h') {
-          startDate = new Date(Date.now() - 60 * 60 * 1000);
-        } else if (presetRange === '24h') {
-          startDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        } else if (presetRange === '7d') {
-          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        } else {
-          startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        // Use current time as base for both start and end
+        const now = new Date();
+        endDate = new Date(now); // Make sure end date is current time
+        
+        switch (presetRange) {
+          case '1h':
+            startDate = new Date(now.getTime() - 60 * 60 * 1000);
+            break;
+          case '24h':
+            startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            break;
+          case '7d':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case '30d':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         }
       }
+      
+      const toKSTString = (date: Date) => {
+        return date.toISOString();
+      };
 
+      // Determine period and aggregation based on date range
+      const rangeDiff = endDate.getTime() - startDate.getTime();
+      const hoursDiff = rangeDiff / (1000 * 60 * 60);
+      const daysDiff = hoursDiff / 24;
+      
+      // Determine aggregation period
+      let period: string;
+      let aggregation: string;
+      
+      if (hoursDiff <= 1) {
+        period = '5min';  // 1 hour: 5-minute intervals
+        aggregation = '5min';
+      } else if (hoursDiff <= 24) {
+        period = 'hourly';  // 24 hours: hourly intervals
+        aggregation = 'hourly';
+      } else if (daysDiff <= 7) {
+        period = 'hourly';  // 7 days: still hourly for more detail
+        aggregation = '6hour';  // But we'll group by 6 hours
+      } else {
+        period = 'daily';  // 30 days: daily intervals
+        aggregation = 'daily';
+      }
+      
       const response = await apiClient.get<any>('/analytics/stats', {
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        period: 'hourly'
+        start_date: toKSTString(startDate),
+        end_date: toKSTString(endDate),
+        period: period,
+        aggregation: aggregation
       });
       
       if (response) {
         // Process and format the data
+        const statsKey = period === 'daily' ? 'daily_stats' : 'hourly_stats';
         const processedData = {
           total_requests: response.summary?.total_requests || 0,
           blocked_requests: response.summary?.blocked_requests || 0,
@@ -153,29 +194,61 @@ const AnalyticsPage: React.FC = () => {
           block_rate: response.summary?.block_rate || 0,
           top_attack_types: response.attack_types || [],
           top_source_ips: response.top_ips || [],
-          hourly_trends: response.hourly_stats || [],
+          hourly_trends: response[statsKey] || [],
           severity_distribution: response.severity_distribution || [],
           country_stats: response.country_stats || [],
           method_stats: response.method_stats || [],
           response_codes: response.response_codes || []
         };
 
-        // Format hourly trends if they exist
+        // Format trends based on period
         if (processedData.hourly_trends && processedData.hourly_trends.length > 0) {
-          processedData.hourly_trends = processedData.hourly_trends.map((trend: any) => ({
-            hour: trend.hour,  // Keep original ISO string for data
-            hourLabel: formatHourLabel(trend.hour),  // Add formatted label for display
-            total: trend.total_requests || 0,
-            blocked: trend.blocked_requests || 0,
-            attacks: trend.attack_requests || 0
-          }));
+          processedData.hourly_trends = processedData.hourly_trends.map((trend: any) => {
+            const timeKey = period === 'daily' ? 'date' : 'hour';
+            return {
+              hour: trend[timeKey],  // Keep original ISO string for data
+              hourLabel: formatHourLabel(trend[timeKey], aggregation),  // Add formatted label for display
+              total: trend.total_requests || 0,
+              blocked: trend.blocked_requests || 0,
+              attacks: trend.attack_requests || 0
+            };
+          });
         }
 
         setStats(processedData);
         
-        // Try to get date range from the data
-        // Note: This would be better if the backend provided the actual date range
-        // For now, we'll let the DatePicker be fully flexible
+        // Fetch previous period data for comparison
+        const prevStartDate = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()));
+        const prevEndDate = startDate;
+        
+        try {
+          const prevResponse = await apiClient.get<any>('/analytics/stats', {
+            start_date: toKSTString(prevStartDate),
+            end_date: toKSTString(prevEndDate),
+            period: period,
+            aggregation: aggregation
+          });
+          
+          if (prevResponse) {
+            const prevProcessedData = {
+              total_requests: prevResponse.summary?.total_requests || 0,
+              blocked_requests: prevResponse.summary?.blocked_requests || 0,
+              attack_requests: prevResponse.summary?.attack_requests || 0,
+              block_rate: prevResponse.summary?.block_rate || 0,
+              top_attack_types: prevResponse.attack_types || [],
+              top_source_ips: prevResponse.top_ips || [],
+              hourly_trends: [],
+              severity_distribution: [],
+              country_stats: [],
+              method_stats: [],
+              response_codes: []
+            };
+            setPrevStats(prevProcessedData);
+          }
+        } catch (error) {
+          // If previous period fetch fails, continue without comparison
+          setPrevStats(null);
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch analytics:', error);
@@ -188,27 +261,71 @@ const AnalyticsPage: React.FC = () => {
     }
   };
 
-  // Format hour labels for display
-  const formatHourLabel = (hour: string) => {
-    // If it's an ISO date string
-    if (hour.includes('T')) {
-      const date = new Date(hour);
-      // For 1 hour range, show time with minutes
-      if (presetRange === '1h') {
-        return date.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' });
-      }
-      // For 24 hour range, show hour only
-      if (presetRange === '24h') {
-        return date.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit' });
-      }
-      // For 7 day range, show day and hour
-      if (presetRange === '7d') {
-        return date.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', day: 'numeric', hour: '2-digit' });
-      }
-      // For monthly data, show date
-      return date.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' });
+  // Format hour labels for display based on aggregation period
+  const formatHourLabel = (timeStr: string, aggregation?: string) => {
+    if (!timeStr) return '';
+    
+    // Handle date-only format (YYYY-MM-DD)
+    if (timeStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date = new Date(timeStr + 'T00:00:00+09:00');
+      return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
     }
-    return hour;
+    
+    // Handle datetime string (YYYY-MM-DD HH:MM:SS)
+    if (timeStr.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+      const date = new Date(timeStr.replace(' ', 'T') + '+09:00');
+      
+      // Format based on aggregation period
+      switch (aggregation || presetRange) {
+        case '5min':
+        case '1h':
+          // Show time with minutes for 5-minute intervals
+          return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        case 'hourly':
+        case '24h':
+          // Show hour only for hourly data
+          return date.toLocaleTimeString('ko-KR', { hour: '2-digit' });
+        case '6hour':
+          // Show date and 6-hour period
+          const hour = date.getHours();
+          const period = Math.floor(hour / 6) * 6;
+          return `${date.getMonth() + 1}/${date.getDate()} ${period}시`;
+        case '7d':
+          // Show month/day for weekly data
+          return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        case 'daily':
+        case '30d':
+        default:
+          // Show date for daily data
+          return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+      }
+    }
+    
+    // Handle ISO date string
+    if (timeStr.includes('T')) {
+      const date = new Date(timeStr);
+      
+      switch (aggregation || presetRange) {
+        case '5min':
+        case '1h':
+          return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        case 'hourly':
+        case '24h':
+          return date.toLocaleTimeString('ko-KR', { hour: '2-digit' });
+        case '6hour':
+          const hour = date.getHours();
+          const period = Math.floor(hour / 6) * 6;
+          return `${date.getMonth() + 1}/${date.getDate()} ${period}시`;
+        case '7d':
+          return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+        case 'daily':
+        case '30d':
+        default:
+          return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+      }
+    }
+    
+    return timeStr;
   };
 
   const exportData = () => {
@@ -231,7 +348,7 @@ ${stats.top_attack_types.map(t => `${t.type},${t.count}`).join('\n')}
 
 Top Source IPs
 IP,Count
-${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
+${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}`).join('\n')}
 `;
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -243,15 +360,27 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
     window.URL.revokeObjectURL(url);
   };
 
+  const calculateChange = (current: number, previous: number | undefined) => {
+    if (!previous || previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
   const getChangeIcon = (value: number) => {
     if (value > 0) return <ArrowUp className="w-3 h-3" />;
     if (value < 0) return <ArrowDown className="w-3 h-3" />;
     return <Minus className="w-3 h-3" />;
   };
 
-  const getChangeColor = (value: number) => {
-    if (value > 0) return 'text-red-600 dark:text-red-400';
-    if (value < 0) return 'text-green-600 dark:text-green-400';
+  const getChangeColor = (value: number, isNegative: boolean = false) => {
+    // For attacks/blocks, increase is bad (red), decrease is good (green)
+    // For normal traffic, it's neutral
+    if (isNegative) {
+      if (value > 0) return 'text-red-600 dark:text-red-400';
+      if (value < 0) return 'text-green-600 dark:text-green-400';
+    } else {
+      if (value > 0) return 'text-blue-600 dark:text-blue-400';
+      if (value < 0) return 'text-gray-600 dark:text-gray-400';
+    }
     return 'text-gray-500 dark:text-gray-400';
   };
 
@@ -410,10 +539,12 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                 <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl">
                   <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
-                <span className={`text-xs font-medium flex items-center gap-1 ${getChangeColor(12.5)}`}>
-                  {getChangeIcon(12.5)}
-                  12.5%
-                </span>
+                {prevStats && (
+                  <span className={`text-xs font-medium flex items-center gap-1 ${getChangeColor(calculateChange(stats.total_requests, prevStats.total_requests))}`}>
+                    {getChangeIcon(calculateChange(stats.total_requests, prevStats.total_requests))}
+                    {Math.abs(calculateChange(stats.total_requests, prevStats.total_requests)).toFixed(1)}%
+                  </span>
+                )}
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.total_requests.toLocaleString()}
@@ -426,15 +557,17 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                 <div className="p-3 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl">
                   <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
-                <span className={`text-xs font-medium flex items-center gap-1 ${getChangeColor(-5.2)}`}>
-                  {getChangeIcon(-5.2)}
-                  5.2%
-                </span>
+                {prevStats && (
+                  <span className={`text-xs font-medium flex items-center gap-1 ${getChangeColor(calculateChange(stats.blocked_requests, prevStats.blocked_requests), true)}`}>
+                    {getChangeIcon(calculateChange(stats.blocked_requests, prevStats.blocked_requests))}
+                    {Math.abs(calculateChange(stats.blocked_requests, prevStats.blocked_requests)).toFixed(1)}%
+                  </span>
+                )}
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.blocked_requests.toLocaleString()}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">Blocked Attacks</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">Blocked Requests</div>
               <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Block Rate: {stats.block_rate.toFixed(1)}%
               </div>
@@ -445,12 +578,22 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                 <div className="p-3 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 rounded-xl">
                   <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 </div>
-                <Zap className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-pulse" />
+                {prevStats && (
+                  <span className={`text-xs font-medium flex items-center gap-1 ${getChangeColor(calculateChange(stats.attack_requests, prevStats.attack_requests), true)}`}>
+                    {getChangeIcon(calculateChange(stats.attack_requests, prevStats.attack_requests))}
+                    {Math.abs(calculateChange(stats.attack_requests, prevStats.attack_requests)).toFixed(1)}%
+                  </span>
+                )}
               </div>
               <div className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.attack_requests.toLocaleString()}
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">Attack Attempts</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">Attack Detected</div>
+              <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {stats.blocked_requests > 0 ? 
+                  `${((stats.blocked_requests / stats.attack_requests) * 100).toFixed(1)}% blocked` : 
+                  'Detection only'}
+              </div>
             </div>
 
             <div className="card">
@@ -473,27 +616,19 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                 Traffic Trends
               </h3>
               <ChartErrorBoundary>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={stats.hourly_trends} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={400}>
+                  <ComposedChart data={stats.hourly_trends} margin={{ top: 20, right: 20, left: 10, bottom: 70 }}>
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.danger} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={COLORS.danger} stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorAttacks" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.warning} stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor={COLORS.warning} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0.1}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis 
                       dataKey="hourLabel" 
                       stroke={chartColors.text}
-                      tick={{ fontSize: 12, fill: chartColors.text }}
+                      tick={{ fontSize: 11, fill: chartColors.text }}
                       angle={-45}
                       textAnchor="end"
                       height={60}
@@ -504,13 +639,13 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                     />
                     <Tooltip 
                       contentStyle={tooltipStyle}
-                      formatter={(value: any) => [value.toLocaleString(), '']}
+                      formatter={(value: any) => value.toLocaleString()}
                       labelFormatter={(label: string) => `Time: ${label}`}
                     />
                     <Legend 
                       verticalAlign="top" 
                       height={36}
-                      iconType="circle"
+                      iconType="rect"
                     />
                     <Area 
                       type="monotone" 
@@ -521,25 +656,23 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                       fillOpacity={1} 
                       fill="url(#colorTotal)" 
                     />
-                    <Area 
-                      type="monotone" 
+                    <Bar 
                       dataKey="blocked" 
                       name="Blocked"
-                      stroke={COLORS.danger} 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorBlocked)" 
+                      fill={COLORS.danger}
+                      fillOpacity={0.8}
+                      barSize={20}
                     />
-                    <Area 
+                    <Line 
                       type="monotone" 
                       dataKey="attacks" 
                       name="Attacks"
                       stroke={COLORS.warning} 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorAttacks)" 
+                      strokeWidth={3}
+                      dot={{ fill: COLORS.warning, r: 4 }}
+                      activeDot={{ r: 6 }}
                     />
-                  </AreaChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </ChartErrorBoundary>
             </div>
@@ -548,7 +681,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Traffic Trends
               </h3>
-              <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
                 <div className="text-center">
                   <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>No traffic data available for the selected period</p>
@@ -621,7 +754,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                   </ResponsiveContainer>
                 </ChartErrorBoundary>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
                   <p>No attack data available</p>
                 </div>
               )}
@@ -671,7 +804,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                   </ResponsiveContainer>
                 </ChartErrorBoundary>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
                   <p>No severity data available</p>
                 </div>
               )}
@@ -720,7 +853,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                        {ip.count.toLocaleString()}
+                        {(ip.count || ip.total_requests || 0).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <button
@@ -818,7 +951,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                   </ResponsiveContainer>
                 </ChartErrorBoundary>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
                   <p>No method data available</p>
                 </div>
               )}
@@ -883,7 +1016,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count}`).join('\n')}
                   </ResponsiveContainer>
                 </ChartErrorBoundary>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
                   <p>No response code data available</p>
                 </div>
               )}

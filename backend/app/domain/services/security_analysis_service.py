@@ -7,7 +7,11 @@ class SecurityAnalysisService:
     
     @staticmethod
     def calculate_threat_level(events: List[SecurityEvent]) -> Dict[str, Any]:
-        """Calculate threat level based on events"""
+        """Calculate threat level based on individual events
+        
+        Note: This method is kept for compatibility but not actively used.
+        Use calculate_threat_level_from_stats() for better performance.
+        """
         if not events:
             return {
                 "level": "low",
@@ -145,3 +149,68 @@ class SecurityAnalysisService:
             score *= 0.7
         
         return min(100.0, score)
+    
+    @staticmethod
+    def calculate_threat_level_from_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
+        """Calculate threat level from aggregated statistics instead of individual events"""
+        reasons = []
+        score = 0
+        
+        # Check attack rate
+        total_events = stats.get('total_events', 0)
+        attack_events = stats.get('attack_events', 0)
+        
+        if total_events > 0:
+            attack_rate = attack_events / total_events
+            
+            if attack_rate > 0.5:
+                score += 40
+                reasons.append(f"High attack rate: {attack_rate:.1%}")
+            elif attack_rate > 0.2:
+                score += 20
+                reasons.append(f"Moderate attack rate: {attack_rate:.1%}")
+        
+        # Check block rate
+        blocked_events = stats.get('blocked_events', 0)
+        if total_events > 0:
+            block_rate = blocked_events / total_events
+            if block_rate > 0.3:
+                score += 30
+                reasons.append(f"High block rate: {block_rate:.1%}")
+            elif block_rate > 0.1:
+                score += 15
+                reasons.append(f"Elevated block rate: {block_rate:.1%}")
+        
+        # Check attack diversity
+        attack_type_count = len(stats.get('top_attack_types', []))
+        if attack_type_count > 5:
+            score += 20
+            reasons.append(f"Multiple attack vectors: {attack_type_count} types")
+        elif attack_type_count > 2:
+            score += 10
+            reasons.append(f"Several attack types detected: {attack_type_count}")
+        
+        # Check unique attacker count
+        unique_ips = len(stats.get('top_source_ips', []))
+        if unique_ips > 10:
+            score += 15
+            reasons.append(f"Multiple attackers: {unique_ips} unique IPs")
+        
+        # Determine level
+        if score >= 70:
+            level = "critical"
+        elif score >= 50:
+            level = "high"
+        elif score >= 30:
+            level = "medium"
+        else:
+            level = "low"
+        
+        if not reasons:
+            reasons = ["Normal traffic patterns"]
+        
+        return {
+            "level": level,
+            "score": min(100, score),
+            "reasons": reasons
+        }

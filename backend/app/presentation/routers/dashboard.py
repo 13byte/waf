@@ -33,23 +33,21 @@ async def get_dashboard_stats(
     # Get repository
     repo = SecurityEventRepository(db)
     
-    # Get stats
+    # Get aggregated stats from DB - no individual event fetching needed
     stats = await repo.get_stats(start_date, end_date)
     
-    # Get recent events for threat analysis
-    events, _ = await repo.get_all(
-        skip=0,
-        limit=1000,
-        filters={"start_date": start_date, "end_date": end_date}
-    )
-    
-    # Analyze threat level
+    # Calculate threat level from aggregated stats instead of individual events
     analysis_service = SecurityAnalysisService()
-    threat_level = analysis_service.calculate_threat_level(events)
+    threat_level = analysis_service.calculate_threat_level_from_stats(stats)
     
-    # Calculate overall risk score
-    risk_scores = [analysis_service.calculate_risk_score(e) for e in events]
-    avg_risk_score = sum(risk_scores) / len(risk_scores) if risk_scores else 0
+    # Calculate risk score from aggregated stats (not individual events)
+    total = stats.get('total_events', 0)
+    if total > 0:
+        attack_rate = stats.get('attack_events', 0) / total * 100
+        block_rate = stats.get('block_rate', 0)
+        avg_risk_score = min(100, (attack_rate * 0.6) + (block_rate * 0.4))
+    else:
+        avg_risk_score = 0
     
     return {
         "stats": stats,

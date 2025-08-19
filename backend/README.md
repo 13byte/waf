@@ -69,7 +69,8 @@ class User(Base):
 Domain service for security event analysis and threat assessment.
 
 **Key Methods:**
-- `calculate_threat_level(events)` - Analyzes threat level from event patterns
+- `calculate_threat_level_from_stats(stats)` - Analyzes threat level from aggregated statistics (preferred)
+- `calculate_threat_level(events)` - Analyzes threat level from individual events (legacy)
 - `identify_suspicious_ips(events)` - Identifies potentially malicious IP addresses
 - `calculate_risk_score(event)` - Calculates individual event risk scores
 
