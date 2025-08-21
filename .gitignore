@@ -123,6 +123,7 @@ test-reports/
 jwt-keys/
 *.jwt
 access-tokens.txt
+CLAUDE.md
 
 # Build Artifacts
 *.tar.gz
