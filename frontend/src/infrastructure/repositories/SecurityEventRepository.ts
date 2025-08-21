@@ -153,6 +153,12 @@ export class SecurityEventRepository implements ISecurityEventRepository {
           blocked_requests_change: number;
           attack_requests_change: number;
         };
+        hourly_trends?: Array<{
+          label: string;
+          total: number;
+          blocked: number;
+          attacks: number;
+        }>;
         time_range: string;
       }>('/dashboard/stats', params);
       

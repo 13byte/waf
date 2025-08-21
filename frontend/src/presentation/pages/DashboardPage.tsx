@@ -392,12 +392,24 @@ const DashboardPage: React.FC = () => {
                   x: {
                     grid: {
                       display: false
+                    },
+                    ticks: {
+                      font: {
+                        size: 14
+                      },
+                      maxRotation: 45,
+                      minRotation: 45
                     }
                   },
                   y: {
                     beginAtZero: true,
                     grid: {
                       color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                      font: {
+                        size: 12
+                      }
                     }
                   }
                 }

@@ -617,7 +617,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
               </h3>
               <ChartErrorBoundary>
                 <ResponsiveContainer width="100%" height={400}>
-                  <ComposedChart data={stats.hourly_trends} margin={{ top: 20, right: 20, left: 10, bottom: 70 }}>
+                  <ComposedChart data={stats.hourly_trends} margin={{ top: 20, right: 20, left: 10, bottom: 90 }}>
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
@@ -628,10 +628,10 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
                     <XAxis 
                       dataKey="hourLabel" 
                       stroke={chartColors.text}
-                      tick={{ fontSize: 11, fill: chartColors.text }}
+                      tick={{ fontSize: 14, fill: chartColors.text }}
                       angle={-45}
                       textAnchor="end"
-                      height={60}
+                      height={80}
                     />
                     <YAxis 
                       stroke={chartColors.text}
