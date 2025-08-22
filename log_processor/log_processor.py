@@ -471,7 +471,18 @@ class LogFileHandler(FileSystemEventHandler):
 
 def main():
     logging.info("Starting log processor service.")
-    db_session_factory = get_db_session
+    
+    # Ensure database connection is established before starting
+    try:
+        db_session_factory = get_db_session
+        test_db = db_session_factory()
+        test_db.close()
+        logging.info("Database connection test successful")
+    except Exception as e:
+        logging.error(f"Failed to establish database connection: {e}")
+        logging.error("Exiting log processor due to database connection failure")
+        import sys
+        sys.exit(1)
     
     # Load last position
     last_position = 0
@@ -485,6 +496,9 @@ def main():
     logging.info(f"Starting from position: {last_position}")
     
     # Use polling approach for Docker compatibility
+    consecutive_errors = 0
+    max_consecutive_errors = 10
+    
     while True:
         try:
             db = db_session_factory()
@@ -495,6 +509,7 @@ def main():
                     if current_size > last_position:
                         logging.info(f"New log content detected: {current_size} bytes (was {last_position}), processing {current_size - last_position} new bytes")
                         last_position = process_new_logs(db, last_position)
+                        consecutive_errors = 0  # Reset error counter on success
                     elif current_size < last_position:
                         # Log file was rotated or truncated
                         logging.warning(f"Log file size decreased from {last_position} to {current_size}, resetting position to 0")
@@ -502,7 +517,20 @@ def main():
             finally:
                 db.close()
         except Exception as e:
-            logging.error(f"Error in main loop: {e}")
+            consecutive_errors += 1
+            logging.error(f"Error in main loop (attempt {consecutive_errors}/{max_consecutive_errors}): {e}")
+            
+            # Exit if too many consecutive errors
+            if consecutive_errors >= max_consecutive_errors:
+                logging.critical(f"Too many consecutive errors ({consecutive_errors}), exiting log processor")
+                import sys
+                sys.exit(1)
+            
+            # Exponential backoff on errors
+            error_sleep = min(LOG_PROCESSOR_INTERVAL * (2 ** consecutive_errors), 30)
+            logging.info(f"Waiting {error_sleep} seconds before retry...")
+            time.sleep(error_sleep)
+            continue
         
         # Poll at configured interval
         time.sleep(LOG_PROCESSOR_INTERVAL)
