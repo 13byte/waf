@@ -21,6 +21,7 @@ import { SecurityEventRepository } from '../../infrastructure/repositories/Secur
 import { SecurityAnalysisService } from '../../domain/services/SecurityAnalysisService';
 import { apiClient } from '../../services/apiClient';
 import { TimeRange } from '../../domain/value-objects/TimeRange';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import { Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -54,8 +55,11 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('24h');
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
   const [realtimeEvents, setRealtimeEvents] = useState<any[]>([]);
+  const mountedRef = React.useRef(true);
+  
+  // Use the WebSocket hook
+  const { isConnected: wsConnected, lastMessage } = useWebSocket('/api/ws/security-events');
 
   // Check authentication on mount
   useEffect(() => {
@@ -65,67 +69,27 @@ const DashboardPage: React.FC = () => {
     }
   }, [navigate]);
 
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (lastMessage && lastMessage.type === 'security_event') {
+      const eventData = lastMessage.data;
+      // Add to realtime events (keep last 10)
+      setRealtimeEvents(prev => [eventData, ...prev].slice(0, 10));
+      // Reload dashboard data if it's a high severity event
+      if (eventData?.severity === 'HIGH' || eventData?.severity === 'CRITICAL') {
+        loadDashboardData();
+      }
+    }
+  }, [lastMessage]);
+
   useEffect(() => {
     loadDashboardData();
   }, [timeRange]);
 
-  // WebSocket connection for real-time updates
+  // Cleanup on unmount
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    
-    const connectWebSocket = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/ws/security-events`;
-      
-      try {
-        ws = new WebSocket(wsUrl);
-        
-        ws.onopen = () => {
-          console.log('WebSocket connected');
-          setWsConnected(true);
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            // Add to realtime events (keep last 10)
-            setRealtimeEvents(prev => [data, ...prev].slice(0, 10));
-            // Reload dashboard data if it's a high severity event
-            if (data.severity === 'HIGH' || data.severity === 'CRITICAL') {
-              loadDashboardData();
-            }
-          } catch (err) {
-            console.error('Error parsing WebSocket message:', err);
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          setWsConnected(false);
-        };
-        
-        ws.onclose = () => {
-          console.log('WebSocket disconnected');
-          setWsConnected(false);
-          // Reconnect after 3 seconds
-          setTimeout(connectWebSocket, 3000);
-        };
-      } catch (err) {
-        console.error('Failed to connect WebSocket:', err);
-      }
-    };
-    
-    // Connect on mount
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      connectWebSocket();
-    }
-    
-    // Cleanup on unmount
     return () => {
-      if (ws) {
-        ws.close();
-      }
+      mountedRef.current = false;
     };
   }, []);
 
@@ -159,11 +123,16 @@ const DashboardPage: React.FC = () => {
         new TimeRange(startDate, now)
       );
       
-      setData(dashboardData);
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        setData(dashboardData);
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
