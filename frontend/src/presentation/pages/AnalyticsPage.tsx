@@ -489,9 +489,15 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
                 maxDate={customEndDate || new Date()}
                 popperPlacement="bottom-start"
                 popperClassName="datepicker-popper-custom"
-                popperContainer={({ children }) => (
-                  <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
-                )}
+                popperModifiers={[
+                  {
+                    name: 'preventOverflow',
+                    options: {
+                      rootBoundary: 'viewport',
+                      altBoundary: false
+                    }
+                  }
+                ]}
               />
             </div>
             <span className="text-gray-500 dark:text-gray-400">to</span>
@@ -514,9 +520,15 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
                 maxDate={new Date()}
                 popperPlacement="bottom-start"
                 popperClassName="datepicker-popper-custom"
-                popperContainer={({ children }) => (
-                  <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
-                )}
+                popperModifiers={[
+                  {
+                    name: 'preventOverflow',
+                    options: {
+                      rootBoundary: 'viewport',
+                      altBoundary: false
+                    }
+                  }
+                ]}
               />
             </div>
           </div>
