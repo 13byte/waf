@@ -31,10 +31,10 @@ async def get_aggregated_stats(
     if not start_date:
         start_date = end_date - timedelta(days=30)
     
-    # Convert timezone-aware datetime to KST for DB comparison
-    # DB stores timestamps in KST without timezone info
-    start_date_kst = get_kst_time(start_date)
-    end_date_kst = get_kst_time(end_date)
+    # Convert timezone-aware datetime to naive datetime for DB comparison
+    # DB stores timestamps without timezone info (implicitly in KST)
+    start_date_naive = get_kst_time(start_date).replace(tzinfo=None)
+    end_date_naive = get_kst_time(end_date).replace(tzinfo=None)
     
     try:
         # Calculate summary statistics
@@ -47,8 +47,8 @@ async def get_aggregated_stats(
             func.avg(SecurityEvent.anomaly_score).label('avg_anomaly_score'),
             func.max(SecurityEvent.anomaly_score).label('max_anomaly_score')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).first()
         
         # Calculate time-based statistics with flexible aggregation
@@ -88,8 +88,8 @@ async def get_aggregated_stats(
             func.sum(case((SecurityEvent.severity == 'LOW', 1), else_=0)).label('low_events'),
             func.avg(SecurityEvent.anomaly_score).label('avg_anomaly_score')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).group_by(time_format).order_by(time_format).all()
         
         # Get attack type distribution
@@ -107,8 +107,8 @@ async def get_aggregated_stats(
                 )
             ).label('avg_severity')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive,
             SecurityEvent.attack_type.isnot(None)
         ).group_by(SecurityEvent.attack_type).order_by(func.count(SecurityEvent.id).desc()).limit(10).all()
         
@@ -120,8 +120,8 @@ async def get_aggregated_stats(
             func.sum(case((SecurityEvent.is_blocked == True, 1), else_=0)).label('blocked_requests'),
             func.count(distinct(SecurityEvent.attack_type)).label('unique_attack_types')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).group_by(SecurityEvent.source_ip).order_by(
             func.count(SecurityEvent.id).desc()
         ).limit(20).all()
@@ -131,8 +131,8 @@ async def get_aggregated_stats(
             SecurityEvent.severity,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None),
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive,
             SecurityEvent.severity.isnot(None)
         ).group_by(SecurityEvent.severity).all()
         
@@ -141,8 +141,8 @@ async def get_aggregated_stats(
             SecurityEvent.method,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).group_by(SecurityEvent.method).order_by(func.count(SecurityEvent.id).desc()).all()
         
         # Get response code statistics
@@ -150,8 +150,8 @@ async def get_aggregated_stats(
             SecurityEvent.status_code,
             func.count(SecurityEvent.id).label('count')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).group_by(SecurityEvent.status_code).order_by(func.count(SecurityEvent.id).desc()).all()
         
         # Get country statistics using GeoIP
@@ -163,8 +163,8 @@ async def get_aggregated_stats(
             func.count(SecurityEvent.id).label('requests'),
             func.sum(case((SecurityEvent.is_attack == True, 1), else_=0)).label('attacks')
         ).filter(
-            SecurityEvent.timestamp >= start_date_kst.replace(tzinfo=None),
-            SecurityEvent.timestamp <= end_date_kst.replace(tzinfo=None)
+            SecurityEvent.timestamp >= start_date_naive,
+            SecurityEvent.timestamp <= end_date_naive
         ).group_by(SecurityEvent.source_ip).all()
         
         # Aggregate by country
