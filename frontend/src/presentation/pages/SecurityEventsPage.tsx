@@ -486,8 +486,8 @@ const SecurityEventsPage: React.FC = () => {
                   popperPlacement="bottom-start"
                   popperClassName="datepicker-popper-custom"
                   popperContainer={({ children }) => (
-                    <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
-                  )
+                    <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
+                  )}
                 />
               </div>
 
@@ -511,8 +511,8 @@ const SecurityEventsPage: React.FC = () => {
                   popperPlacement="bottom-start"
                   popperClassName="datepicker-popper-custom"
                   popperContainer={({ children }) => (
-                    <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
-                  )
+                    <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
+                  )}
                 />
               </div>
 
