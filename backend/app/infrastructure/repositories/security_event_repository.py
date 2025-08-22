@@ -133,17 +133,19 @@ class SecurityEventRepository(ISecurityEventRepository):
             desc(SecurityEvent.timestamp)
         ).limit(limit).all()
     
-    async def get_by_source_ip(
-        self, 
-        source_ip: str, 
-        limit: int = 100
-    ) -> List[SecurityEvent]:
-        """Get events by source IP using index"""
-        return self.db.query(SecurityEvent).filter(
-            SecurityEvent.source_ip == source_ip
-        ).order_by(
+    async def get_recent_events(self, limit: int = 10) -> List[SecurityEvent]:
+        """Get recent events"""
+        return self.db.query(SecurityEvent).order_by(
             desc(SecurityEvent.timestamp)
         ).limit(limit).all()
+    
+    async def get_by_source_ip(self, ip: str) -> List[SecurityEvent]:
+        """Get events by source IP using index"""
+        return self.db.query(SecurityEvent).filter(
+            SecurityEvent.source_ip == ip
+        ).order_by(
+            desc(SecurityEvent.timestamp)
+        ).limit(100).all()
     
     async def get_threat_ips(
         self, 
@@ -184,6 +186,45 @@ class SecurityEventRepository(ISecurityEventRepository):
                 'threat_level': 'HIGH' if ip.attack_count > 50 else 'MEDIUM'
             }
             for ip in threat_ips
+        ]
+    
+    async def get_attack_patterns(
+        self,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> List[Dict[str, Any]]:
+        """Get attack patterns analysis"""
+        query = self.db.query(
+            SecurityEvent.attack_type,
+            func.count(SecurityEvent.id).label('count'),
+            func.count(func.distinct(SecurityEvent.source_ip)).label('unique_sources'),
+            func.sum(func.cast(SecurityEvent.is_blocked, Integer)).label('blocked_count'),
+            func.avg(SecurityEvent.anomaly_score).label('avg_score')
+        ).filter(
+            SecurityEvent.attack_type.isnot(None)
+        )
+        
+        if start_date:
+            query = query.filter(SecurityEvent.timestamp >= start_date)
+        if end_date:
+            query = query.filter(SecurityEvent.timestamp <= end_date)
+        
+        patterns = query.group_by(
+            SecurityEvent.attack_type
+        ).order_by(
+            desc('count')
+        ).all()
+        
+        return [
+            {
+                'attack_type': pattern.attack_type,
+                'total_count': pattern.count,
+                'unique_sources': pattern.unique_sources,
+                'blocked_count': pattern.blocked_count,
+                'avg_anomaly_score': float(pattern.avg_score or 0),
+                'block_rate': (pattern.blocked_count / pattern.count * 100) if pattern.count > 0 else 0
+            }
+            for pattern in patterns
         ]
     
     def bulk_create(self, events: List[Dict[str, Any]]) -> int:
