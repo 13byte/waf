@@ -489,7 +489,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
                 popperPlacement="bottom-start"
                 popperClassName="datepicker-popper-custom"
                 popperContainer={({ children }) => (
-                  <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                  <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
                 )}
               />
             </div>
@@ -514,7 +514,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
                 popperPlacement="bottom-start"
                 popperClassName="datepicker-popper-custom"
                 popperContainer={({ children }) => (
-                  <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                  <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
                 )}
               />
             </div>
