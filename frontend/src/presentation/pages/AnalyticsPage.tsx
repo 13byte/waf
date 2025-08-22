@@ -1,6 +1,7 @@
 // Analytics page with modern Apple-inspired design
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { 
   Activity, 
   Filter, 
@@ -485,9 +486,15 @@ const SecurityEventsPage: React.FC = () => {
                   maxDate={new Date()}
                   popperPlacement="bottom-start"
                   popperClassName="datepicker-popper-custom"
-                  popperContainer={({ children }) => (
-                    <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
-                  )}
+                  popperModifiers={[
+                    {
+                      name: 'preventOverflow',
+                      options: {
+                        rootBoundary: 'viewport',
+                        altBoundary: false
+                      }
+                    }
+                  ]}
                 />
               </div>
 
@@ -510,9 +517,15 @@ const SecurityEventsPage: React.FC = () => {
                   maxDate={new Date()}
                   popperPlacement="bottom-start"
                   popperClassName="datepicker-popper-custom"
-                  popperContainer={({ children }) => (
-                    <div style={{ position: 'fixed', zIndex: 55 }}>{children}</div>
-                  )}
+                  popperModifiers={[
+                    {
+                      name: 'preventOverflow',
+                      options: {
+                        rootBoundary: 'viewport',
+                        altBoundary: false
+                      }
+                    }
+                  ]}
                 />
               </div>
 
