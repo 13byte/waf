@@ -13,6 +13,7 @@ export const useWebSocket = (url: string) => {
   const reconnectTimeout = useRef<number>();
   const pingInterval = useRef<number>();
   const isUnmounting = useRef(false);
+  const isReconnecting = useRef(false);
 
   const connect = useCallback(() => {
     try {
@@ -38,11 +39,14 @@ export const useWebSocket = (url: string) => {
       ws.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          if (message.type !== 'heartbeat' && message !== 'pong') {
+          if (message.type !== 'heartbeat' && message.type !== 'pong') {
             setLastMessage(message);
           }
         } catch (e) {
           // Text message (pong etc.)
+          if (event.data !== 'pong') {
+            console.debug('Received non-JSON message:', event.data);
+          }
         }
       };
 
@@ -54,9 +58,11 @@ export const useWebSocket = (url: string) => {
           pingInterval.current = undefined;
         }
         
-        // Only reconnect if not unmounting
-        if (!isUnmounting.current) {
+        // Only reconnect if not unmounting and not already reconnecting
+        if (!isUnmounting.current && !isReconnecting.current) {
+          isReconnecting.current = true;
           reconnectTimeout.current = window.setTimeout(() => {
+            isReconnecting.current = false;
             connect();
           }, 5000);
         }
