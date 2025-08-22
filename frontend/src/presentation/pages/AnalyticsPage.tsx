@@ -1,9 +1,6 @@
 // Analytics page with modern Apple-inspired design
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import '../../styles/datepicker.css';
-import { ko } from 'date-fns/locale';
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
@@ -444,7 +441,7 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
       </div>
 
       {/* Date Range Selector */}
-      <div className="card p-4">
+      <div className="card-no-stack p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Calendar className="w-5 h-5 text-gray-500" />
@@ -473,45 +470,54 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
           
           {/* Custom Date Range */}
           <div className="flex items-center gap-2">
-            <DatePicker
-              selected={customStartDate}
-              onChange={(date) => {
-                setCustomStartDate(date);
-                setDateRangeType('custom');
-              }}
-              selectsStart
-              startDate={customStartDate}
-              endDate={customEndDate}
-              minDate={undefined}
-              maxDate={customEndDate || new Date()}
-              dateFormat="yyyy-MM-dd"
-              locale={ko}
-              placeholderText="Start Date"
-              className="input-field"
-              popperPlacement="bottom-start"
-              withPortal
-              portalId="root-portal"
-            />
-            <span className="text-gray-500">to</span>
-            <DatePicker
-              selected={customEndDate}
-              onChange={(date) => {
-                setCustomEndDate(date);
-                setDateRangeType('custom');
-              }}
-              selectsEnd
-              startDate={customStartDate}
-              endDate={customEndDate}
-              minDate={customStartDate || undefined}
-              maxDate={new Date()}
-              dateFormat="yyyy-MM-dd"
-              locale={ko}
-              placeholderText="End Date"
-              className="input-field"
-              popperPlacement="bottom-start"
-              withPortal
-              portalId="root-portal"
-            />
+            <div className="datepicker-wrapper">
+              <DatePicker
+                selected={customStartDate}
+                onChange={(date) => {
+                  setCustomStartDate(date);
+                  setDateRangeType('custom');
+                }}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="Start Date"
+                className="datepicker-input"
+                wrapperClassName="datepicker-wrapper-inner"
+                isClearable
+                selectsStart
+                startDate={customStartDate}
+                endDate={customEndDate}
+                maxDate={customEndDate || new Date()}
+                popperPlacement="bottom-start"
+                popperClassName="datepicker-popper-custom"
+                popperContainer={({ children }) => (
+                  <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                )}
+              />
+            </div>
+            <span className="text-gray-500 dark:text-gray-400">to</span>
+            <div className="datepicker-wrapper">
+              <DatePicker
+                selected={customEndDate}
+                onChange={(date) => {
+                  setCustomEndDate(date);
+                  setDateRangeType('custom');
+                }}
+                dateFormat="yyyy-MM-dd"
+                placeholderText="End Date"
+                className="datepicker-input"
+                wrapperClassName="datepicker-wrapper-inner"
+                isClearable
+                selectsEnd
+                startDate={customStartDate}
+                endDate={customEndDate}
+                minDate={customStartDate}
+                maxDate={new Date()}
+                popperPlacement="bottom-start"
+                popperClassName="datepicker-popper-custom"
+                popperContainer={({ children }) => (
+                  <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                )}
+              />
+            </div>
           </div>
         </div>
       </div>

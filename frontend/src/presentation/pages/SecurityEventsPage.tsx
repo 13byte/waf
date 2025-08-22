@@ -1,9 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import '../../styles/datepicker.css';
-import { ko } from 'date-fns/locale';
 import { 
   Activity, 
   Filter, 
@@ -77,7 +74,11 @@ const SecurityEventsPage: React.FC = () => {
     totalPages: 0
   });
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
-  const [dateRange, setDateRange] = useState({ min: '', max: '' });
+  // dateRange will be set based on actual log data when first loaded
+  const [dateRange, setDateRange] = useState({ 
+    min: '', 
+    max: '' 
+  });
   const [notifications, setNotifications] = useState<SecurityNotification[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [shouldApplyFilters, setShouldApplyFilters] = useState(false);
@@ -191,10 +192,22 @@ const SecurityEventsPage: React.FC = () => {
       
       if (!dateRange.min && data.events?.length > 0) {
         const dates = data.events.map((e: SecurityEvent) => new Date(e.timestamp).getTime());
+        const minDate = new Date(Math.min(...dates)).toISOString();
+        const maxDate = new Date(Math.max(...dates)).toISOString();
+        
         setDateRange({
-          min: new Date(Math.min(...dates)).toISOString(),
-          max: new Date(Math.max(...dates)).toISOString()
+          min: minDate,
+          max: maxDate
         });
+        
+        // Also set the filter dates if they're empty
+        if (!filters.dateFrom && !filters.dateTo) {
+          setFilters(prev => ({
+            ...prev,
+            dateFrom: minDate,
+            dateTo: maxDate
+          }));
+        }
       }
     } catch (error: any) {
       console.error('Failed to load events:', error);
@@ -379,7 +392,7 @@ const SecurityEventsPage: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="card">
+      <div className="card-no-stack">
         <div className="p-4">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -455,58 +468,51 @@ const SecurityEventsPage: React.FC = () => {
               </select>
 
               {/* Date From */}
-              <div className="relative">
+              <div className="datepicker-wrapper">
                 <DatePicker
                   selected={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   onChange={(date) => {
-                    // Convert to local timezone ISO string
-                    if (date) {
-                      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-                      handleFilterChange('dateFrom', localDate.toISOString());
-                    } else {
-                      handleFilterChange('dateFrom', '');
-                    }
+                    handleFilterChange('dateFrom', date ? date.toISOString() : '');
                   }}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={15}
-                  dateFormat="yyyy-MM-dd HH:mm"
-                  locale={ko}
+                  dateFormat="yyyy-MM-dd"
                   placeholderText="Start Date"
-                  className="input-field w-full"
-                  minDate={dateRange.min ? new Date(dateRange.min) : undefined}
-                  maxDate={filters.dateTo ? new Date(filters.dateTo) : new Date()}
+                  className="datepicker-input"
+                  wrapperClassName="datepicker-wrapper-inner"
+                  isClearable
+                  selectsStart
+                  startDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
+                  endDate={filters.dateTo ? new Date(filters.dateTo) : null}
+                  maxDate={new Date()}
                   popperPlacement="bottom-start"
-                  withPortal
-                  portalId="root-portal"
+                  popperClassName="datepicker-popper-custom"
+                  popperContainer={({ children }) => (
+                    <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                  )
                 />
               </div>
 
               {/* Date To */}
-              <div className="relative">
+              <div className="datepicker-wrapper">
                 <DatePicker
                   selected={filters.dateTo ? new Date(filters.dateTo) : null}
                   onChange={(date) => {
-                    // Convert to local timezone ISO string
-                    if (date) {
-                      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-                      handleFilterChange('dateTo', localDate.toISOString());
-                    } else {
-                      handleFilterChange('dateTo', '');
-                    }
+                    handleFilterChange('dateTo', date ? date.toISOString() : '');
                   }}
-                  showTimeSelect
-                  timeFormat="HH:mm"
-                  timeIntervals={15}
-                  dateFormat="yyyy-MM-dd HH:mm"
-                  locale={ko}
+                  dateFormat="yyyy-MM-dd"
                   placeholderText="End Date"
-                  className="input-field w-full"
-                  minDate={filters.dateFrom ? new Date(filters.dateFrom) : (dateRange.min ? new Date(dateRange.min) : undefined)}
+                  className="datepicker-input"
+                  wrapperClassName="datepicker-wrapper-inner"
+                  isClearable
+                  selectsEnd
+                  startDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
+                  endDate={filters.dateTo ? new Date(filters.dateTo) : null}
+                  minDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   maxDate={new Date()}
                   popperPlacement="bottom-start"
-                  withPortal
-                  portalId="root-portal"
+                  popperClassName="datepicker-popper-custom"
+                  popperContainer={({ children }) => (
+                    <div style={{ position: 'fixed', zIndex: 9999 }}>{children}</div>
+                  )
                 />
               </div>
 

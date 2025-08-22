@@ -19,7 +19,7 @@ ON security_events(status_code);
 
 -- WAF logs performance indexes
 CREATE INDEX idx_waf_logs_timestamp_blocked
-ON waf_logs(timestamp DESC, blocked);
+ON waf_logs(timestamp DESC, is_blocked);
 
 CREATE INDEX idx_waf_logs_source_ip_timestamp
 ON waf_logs(source_ip, timestamp DESC);

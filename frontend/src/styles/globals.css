@@ -48,6 +48,22 @@
       0 0 0 1px rgba(0, 0, 0, 0.03),
       0 2px 4px rgba(0, 0, 0, 0.05),
       0 12px 24px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: visible !important;
+    z-index: 1;
+  }
+  
+  /* Special card for date pickers - no stacking context */
+  .card-no-stack {
+    @apply rounded-2xl p-6 transition-all duration-300;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(209, 213, 219, 0.3);
+    box-shadow: 
+      0 0 0 1px rgba(0, 0, 0, 0.03),
+      0 2px 4px rgba(0, 0, 0, 0.05),
+      0 12px 24px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: visible !important;
   }
 
   .dark .card {
@@ -59,9 +75,20 @@
       0 0 0 1px rgba(255, 255, 255, 0.05),
       0 2px 4px rgba(0, 0, 0, 0.3),
       0 12px 24px rgba(0, 0, 0, 0.4);
+    overflow: visible !important;
+  }
+  
+  .dark .card-no-stack {
+    background: rgba(31, 41, 55, 0.95);
+    border: 1px solid rgba(75, 85, 99, 0.3);
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 12px 24px rgba(0, 0, 0, 0.4);
   }
 
-  .card:hover {
+  .card:hover,
+  .card-no-stack:hover {
     transform: translateY(-2px) scale(1.01);
     box-shadow: 
       0 0 0 1px rgba(59, 130, 246, 0.1),
@@ -72,7 +99,7 @@
 
   /* Metric Cards - Clean design with hover effects */
   .metric-card {
-    @apply bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 transition-all duration-200 relative overflow-hidden;
+    @apply bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 transition-all duration-200 relative;
   }
 
   .metric-card::before {

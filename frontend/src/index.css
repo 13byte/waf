@@ -1,7 +1,5 @@
 /* Import global design system */
 @import './styles/globals.css';
-
-/* Import date picker styles */
 @import './styles/datepicker.css';
 
 @layer components {

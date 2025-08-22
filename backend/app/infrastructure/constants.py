@@ -3,9 +3,7 @@ Application constants and configuration values
 """
 import os
 
-# ============================================
 # File Size Limits
-# ============================================
 KB = 1024
 MB = KB * 1024
 GB = MB * 1024
@@ -15,9 +13,7 @@ MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE", DEFAULT_MAX_UPLOAD_SIZE))
 
 GEOIP_MAX_SIZE = int(os.getenv("GEOIP_MAX_SIZE", 500 * MB))
 
-# ============================================
 # Network Configuration
-# ============================================
 DEFAULT_BACKEND_HOST = "0.0.0.0"
 DEFAULT_BACKEND_PORT = 8000
 
@@ -25,9 +21,7 @@ BACKEND_HOST = os.getenv("BACKEND_HOST", DEFAULT_BACKEND_HOST)
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", DEFAULT_BACKEND_PORT))
 
 
-# ============================================
 # Security Thresholds
-# ============================================
 ANOMALY_SCORE_THRESHOLD = int(os.getenv("ANOMALY_SCORE_THRESHOLD", 5))
 
 # Severity Scores
@@ -42,23 +36,17 @@ ATTACK_TIME_WINDOW = int(os.getenv("ATTACK_TIME_WINDOW", 60))  # seconds
 BLOCK_DURATION = int(os.getenv("BLOCK_DURATION", 3600))  # 1 hour
 MAX_REQUESTS_PER_IP = int(os.getenv("MAX_REQUESTS_PER_IP", 1000))
 
-# ============================================
-# CRS Rules Paths (for CRS rules viewer)
-# ============================================
+# CRS Rules Paths
 CRS_RULES_PATH = os.getenv("CRS_RULES_PATH", "/opt/owasp-crs/rules")
 CUSTOM_RULES_PATH = os.getenv("CUSTOM_RULES_PATH", "/etc/modsecurity/custom-rules")
 
-# ============================================
 # Database Configuration
-# ============================================
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", 5))
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", 10))
 DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", 300))
 DB_POOL_PRE_PING = os.getenv("DB_POOL_PRE_PING", "true").lower() == "true"
 
-# ============================================
 # API Configuration
-# ============================================
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 100
 DEFAULT_TIMEOUT = 30  # seconds
@@ -75,22 +63,15 @@ PRIVATE_IP_RANGES = [
     "::1"
 ]
 
-# ============================================
 # Log Processing
-# ============================================
 LOG_PROCESSOR_BATCH_SIZE = int(os.getenv("LOG_PROCESSOR_BATCH_SIZE", 100))
 LOG_PROCESSOR_INTERVAL = float(os.getenv("LOG_PROCESSOR_INTERVAL", 0.5))
 
-# ============================================
 # Timeouts (milliseconds for frontend compatibility)
-# ============================================
 WEBSOCKET_TIMEOUT = 30000  # 30 seconds
 API_REQUEST_TIMEOUT = 5000  # 5 seconds
 NOTIFICATION_DISPLAY_TIME = 3000  # 3 seconds
 
-# ============================================
-# Demo/Test Values
-# ============================================
-# These should only be used in test/demo endpoints
+# Demo/Test Values (only for test/demo endpoints)
 DEMO_API_KEYS = ["demo_key_only_for_testing"]
 DEMO_IPS = ["127.0.0.1", "192.168.1.1", "10.0.0.1"]

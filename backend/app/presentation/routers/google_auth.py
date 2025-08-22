@@ -10,12 +10,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os
 
-from app.infrastructure.database import get_db
 from app.infrastructure.timezone import get_kst_now
 from app.domain.models.models import User
 from app.infrastructure.auth import create_access_token
 from app.domain.models.enums import UserRole
-from app.presentation.dependencies import get_current_user
+from app.presentation.dependencies import get_current_user, get_db
 from app.infrastructure.config import settings
 from pydantic import BaseModel, EmailStr
 
