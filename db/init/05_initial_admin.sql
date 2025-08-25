@@ -7,9 +7,3 @@ INSERT INTO users (username, email, password_hash, role, bio) VALUES
 ON DUPLICATE KEY UPDATE 
     password_hash = VALUES(password_hash),
     role = VALUES(role);
-
--- Insert basic categories
-INSERT IGNORE INTO categories (name, description) VALUES
-('General', 'General discussion'),
-('Security', 'Security related topics'),
-('System', 'System announcements');

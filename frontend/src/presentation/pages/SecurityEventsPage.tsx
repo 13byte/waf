@@ -469,63 +469,47 @@ const SecurityEventsPage: React.FC = () => {
               </select>
 
               {/* Date From */}
-              <div className="datepicker-wrapper">
+              <div style={{ position: 'relative' }}>
                 <DatePicker
                   selected={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   onChange={(date) => {
                     handleFilterChange('dateFrom', date ? date.toISOString() : '');
+                    // If start date is after end date, clear end date
+                    if (date && filters.dateTo && date > new Date(filters.dateTo)) {
+                      handleFilterChange('dateTo', '');
+                    }
                   }}
                   dateFormat="yyyy-MM-dd"
                   placeholderText="Start Date"
                   className="datepicker-input"
-                  wrapperClassName="datepicker-wrapper-inner"
                   isClearable
                   selectsStart
                   startDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   endDate={filters.dateTo ? new Date(filters.dateTo) : null}
-                  maxDate={new Date()}
-                  popperPlacement="bottom-start"
-                  popperClassName="datepicker-popper-custom"
-                  popperModifiers={[
-                    {
-                      name: 'preventOverflow',
-                      options: {
-                        rootBoundary: 'viewport',
-                        altBoundary: false
-                      }
-                    }
-                  ]}
+                  maxDate={filters.dateTo ? new Date(filters.dateTo) : new Date()}
                 />
               </div>
 
               {/* Date To */}
-              <div className="datepicker-wrapper">
+              <div style={{ position: 'relative' }}>
                 <DatePicker
                   selected={filters.dateTo ? new Date(filters.dateTo) : null}
                   onChange={(date) => {
                     handleFilterChange('dateTo', date ? date.toISOString() : '');
+                    // If end date is before start date, clear start date
+                    if (date && filters.dateFrom && date < new Date(filters.dateFrom)) {
+                      handleFilterChange('dateFrom', '');
+                    }
                   }}
                   dateFormat="yyyy-MM-dd"
                   placeholderText="End Date"
                   className="datepicker-input"
-                  wrapperClassName="datepicker-wrapper-inner"
                   isClearable
                   selectsEnd
                   startDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   endDate={filters.dateTo ? new Date(filters.dateTo) : null}
-                  minDate={filters.dateFrom ? new Date(filters.dateFrom) : null}
+                  minDate={filters.dateFrom ? new Date(filters.dateFrom) : undefined}
                   maxDate={new Date()}
-                  popperPlacement="bottom-start"
-                  popperClassName="datepicker-popper-custom"
-                  popperModifiers={[
-                    {
-                      name: 'preventOverflow',
-                      options: {
-                        rootBoundary: 'viewport',
-                        altBoundary: false
-                      }
-                    }
-                  ]}
                 />
               </div>
 

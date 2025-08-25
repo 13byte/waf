@@ -1,21 +1,15 @@
 /* Custom DatePicker Styles - Matching Page Design System */
 
-/* Wrapper to prevent button shifting */
-.datepicker-wrapper {
-  width: 100%;
+/* Prevent layout shift when calendar opens */
+.react-datepicker__input-container {
   position: relative;
-  display: block;
-}
-
-.datepicker-wrapper-inner {
-  width: 100% !important;
-  display: block !important;
+  display: inline-block;
+  width: 100%;
 }
 
 /* Base styles - Glassmorphism effect */
 .react-datepicker-wrapper {
   width: 100%;
-  display: block !important;
 }
 
 .react-datepicker {
@@ -317,7 +311,7 @@
 /* Popper positioning - High z-index to ensure visibility */
 .react-datepicker-popper {
   z-index: 9999 !important;
-  position: fixed !important;
+  position: absolute !important;
 }
 
 .react-datepicker-popper[data-placement^="bottom"] .react-datepicker {
@@ -328,14 +322,11 @@
   margin-bottom: 8px;
 }
 
-.datepicker-popper-custom {
-  z-index: 9999 !important;
-}
 
 /* Portal mode styles - Datepicker overlay level */
 .react-datepicker__portal {
   position: fixed !important;
-  z-index: 55 !important;
+  z-index: 9999 !important;
   top: 0;
   left: 0;
   right: 0;
@@ -358,14 +349,6 @@
   transform: none !important;
 }
 
-/* Fix for popper positioning */
-.react-datepicker-popper[data-placement^="bottom"] {
-  transform-origin: center top !important;
-}
-
-.react-datepicker-popper[data-placement^="top"] {
-  transform-origin: center bottom !important;
-}
 
 /* Calendar container custom class */
 .datepicker-calendar {

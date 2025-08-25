@@ -471,64 +471,48 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
           
           {/* Custom Date Range */}
           <div className="flex items-center gap-2">
-            <div className="datepicker-wrapper">
+            <div style={{ position: 'relative' }}>
               <DatePicker
                 selected={customStartDate}
                 onChange={(date) => {
                   setCustomStartDate(date);
                   setDateRangeType('custom');
+                  // If start date is after end date, clear end date
+                  if (date && customEndDate && date > customEndDate) {
+                    setCustomEndDate(null);
+                  }
                 }}
                 dateFormat="yyyy-MM-dd"
                 placeholderText="Start Date"
                 className="datepicker-input"
-                wrapperClassName="datepicker-wrapper-inner"
                 isClearable
                 selectsStart
                 startDate={customStartDate}
                 endDate={customEndDate}
                 maxDate={customEndDate || new Date()}
-                popperPlacement="bottom-start"
-                popperClassName="datepicker-popper-custom"
-                popperModifiers={[
-                  {
-                    name: 'preventOverflow',
-                    options: {
-                      rootBoundary: 'viewport',
-                      altBoundary: false
-                    }
-                  }
-                ]}
               />
             </div>
             <span className="text-gray-500 dark:text-gray-400">to</span>
-            <div className="datepicker-wrapper">
+            <div style={{ position: 'relative' }}>
               <DatePicker
                 selected={customEndDate}
                 onChange={(date) => {
                   setCustomEndDate(date);
                   setDateRangeType('custom');
+                  // If end date is before start date, clear start date
+                  if (date && customStartDate && date < customStartDate) {
+                    setCustomStartDate(null);
+                  }
                 }}
                 dateFormat="yyyy-MM-dd"
                 placeholderText="End Date"
                 className="datepicker-input"
-                wrapperClassName="datepicker-wrapper-inner"
                 isClearable
                 selectsEnd
                 startDate={customStartDate}
                 endDate={customEndDate}
-                minDate={customStartDate}
+                minDate={customStartDate || undefined}
                 maxDate={new Date()}
-                popperPlacement="bottom-start"
-                popperClassName="datepicker-popper-custom"
-                popperModifiers={[
-                  {
-                    name: 'preventOverflow',
-                    options: {
-                      rootBoundary: 'viewport',
-                      altBoundary: false
-                    }
-                  }
-                ]}
               />
             </div>
           </div>
