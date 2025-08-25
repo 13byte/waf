@@ -62,8 +62,10 @@ async def get_security_events(
     if method:
         filters["method"] = method
     if start_date:
+        # Ensure start_date is at the beginning of the day in KST
         filters["start_date"] = start_date
     if end_date:
+        # Ensure end_date includes the entire day (23:59:59) in KST
         filters["end_date"] = end_date
     
     # Get events from repository

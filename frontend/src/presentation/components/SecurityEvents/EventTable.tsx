@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useCallback } from 'react';
 import { Shield, AlertTriangle, ChevronRight, Activity, Globe, Ban, CheckCircle, Zap } from 'lucide-react';
 import type { SecurityEvent, EventTableProps } from '../../../types';
-import { toKSTTimeString, toKSTDateString } from '../../../utils/datetime';
+import { toKSTTimeString, toKSTDateString } from '../../../utils/dateUtils';
 
 const EventTableComponent = memo<EventTableProps>(({ 
   events, 

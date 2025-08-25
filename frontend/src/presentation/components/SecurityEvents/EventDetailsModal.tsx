@@ -1,7 +1,7 @@
 import React, { memo, useMemo } from 'react';
 import { X, Copy, CheckCircle } from 'lucide-react';
 import type { SecurityEvent, EventDetailsModalProps } from '../../../types';
-import { toKSTLocaleString } from '../../../utils/datetime';
+import { toKSTLocaleString } from '../../../utils/dateUtils';
 
 const EventDetailsModalComponent = memo<EventDetailsModalProps>(({ 
   event, 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { getStartOfDay, getEndOfDay, getTodayRange } from '../../utils/dateUtils';
 import { 
   Activity, 
   Filter, 
@@ -200,15 +201,6 @@ const SecurityEventsPage: React.FC = () => {
           min: minDate,
           max: maxDate
         });
-        
-        // Also set the filter dates if they're empty
-        if (!filters.dateFrom && !filters.dateTo) {
-          setFilters(prev => ({
-            ...prev,
-            dateFrom: minDate,
-            dateTo: maxDate
-          }));
-        }
       }
     } catch (error: any) {
       console.error('Failed to load events:', error);
@@ -473,7 +465,8 @@ const SecurityEventsPage: React.FC = () => {
                 <DatePicker
                   selected={filters.dateFrom ? new Date(filters.dateFrom) : null}
                   onChange={(date) => {
-                    handleFilterChange('dateFrom', date ? date.toISOString() : '');
+                    // Use start of day for start date
+                    handleFilterChange('dateFrom', date ? getStartOfDay(date) : '');
                     // If start date is after end date, clear end date
                     if (date && filters.dateTo && date > new Date(filters.dateTo)) {
                       handleFilterChange('dateTo', '');
@@ -495,7 +488,8 @@ const SecurityEventsPage: React.FC = () => {
                 <DatePicker
                   selected={filters.dateTo ? new Date(filters.dateTo) : null}
                   onChange={(date) => {
-                    handleFilterChange('dateTo', date ? date.toISOString() : '');
+                    // Use end of day for end date
+                    handleFilterChange('dateTo', date ? getEndOfDay(date) : '');
                     // If end date is before start date, clear start date
                     if (date && filters.dateFrom && date < new Date(filters.dateFrom)) {
                       handleFilterChange('dateFrom', '');

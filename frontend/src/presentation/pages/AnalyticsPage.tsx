@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { getStartOfDay, getEndOfDay, getTodayRange, getLastNDaysRange, toKSTISOString } from '../../utils/dateUtils';
 import { 
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, 
   ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
@@ -148,10 +149,6 @@ const AnalyticsPage: React.FC = () => {
         }
       }
       
-      const toKSTString = (date: Date) => {
-        return date.toISOString();
-      };
-
       // Determine period and aggregation based on date range
       const rangeDiff = endDate.getTime() - startDate.getTime();
       const hoursDiff = rangeDiff / (1000 * 60 * 60);
@@ -176,8 +173,8 @@ const AnalyticsPage: React.FC = () => {
       }
       
       const response = await apiClient.get<any>('/analytics/stats', {
-        start_date: toKSTString(startDate),
-        end_date: toKSTString(endDate),
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
         period: period,
         aggregation: aggregation
       });
@@ -221,8 +218,8 @@ const AnalyticsPage: React.FC = () => {
         
         try {
           const prevResponse = await apiClient.get<any>('/analytics/stats', {
-            start_date: toKSTString(prevStartDate),
-            end_date: toKSTString(prevEndDate),
+            start_date: toKSTISOString(prevStartDate),
+            end_date: toKSTISOString(prevEndDate),
             period: period,
             aggregation: aggregation
           });
@@ -447,19 +444,31 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
           <div className="flex items-center gap-4">
             <Calendar className="w-5 h-5 text-gray-500" />
             <div className="flex gap-2">
-              {['1h', '24h', '7d', '30d'].map((range) => (
+              {['today', '1h', '24h', '7d', '30d'].map((range) => (
                 <button
                   key={range}
                   onClick={() => {
-                    setDateRangeType('preset');
-                    setPresetRange(range);
+                    if (range === 'today') {
+                      const { startDate, endDate } = getTodayRange();
+                      setCustomStartDate(new Date(startDate));
+                      setCustomEndDate(new Date(endDate));
+                      setDateRangeType('custom');
+                    } else {
+                      setDateRangeType('preset');
+                      setPresetRange(range);
+                    }
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    dateRangeType === 'preset' && presetRange === range
+                    (dateRangeType === 'preset' && presetRange === range) ||
+                    (range === 'today' && dateRangeType === 'custom' && 
+                     customStartDate && customEndDate &&
+                     customStartDate.toDateString() === new Date().toDateString() &&
+                     customEndDate.toDateString() === new Date().toDateString())
                       ? 'bg-primary text-white shadow-lg shadow-primary/20'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
+                  {range === 'today' && 'Today'}
                   {range === '1h' && 'Last Hour'}
                   {range === '24h' && 'Last 24 Hours'}
                   {range === '7d' && 'Last 7 Days'}
@@ -475,10 +484,12 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
               <DatePicker
                 selected={customStartDate}
                 onChange={(date) => {
-                  setCustomStartDate(date);
+                  // Use start of day for start date
+                  const startDate = date ? new Date(getStartOfDay(date)) : null;
+                  setCustomStartDate(startDate);
                   setDateRangeType('custom');
                   // If start date is after end date, clear end date
-                  if (date && customEndDate && date > customEndDate) {
+                  if (startDate && customEndDate && startDate > customEndDate) {
                     setCustomEndDate(null);
                   }
                 }}
@@ -497,10 +508,12 @@ ${stats.top_source_ips.map(ip => `${ip.ip},${ip.count || ip.total_requests || 0}
               <DatePicker
                 selected={customEndDate}
                 onChange={(date) => {
-                  setCustomEndDate(date);
+                  // Use end of day for end date
+                  const endDate = date ? new Date(getEndOfDay(date)) : null;
+                  setCustomEndDate(endDate);
                   setDateRangeType('custom');
                   // If end date is before start date, clear start date
-                  if (date && customStartDate && date < customStartDate) {
+                  if (endDate && customStartDate && endDate < customStartDate) {
                     setCustomStartDate(null);
                   }
                 }}
